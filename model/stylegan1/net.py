@@ -7,7 +7,7 @@ from torch.nn import functional as F
 from torch.nn import init
 from torch.nn.parameter import Parameter
 import numpy as np
-import lreq as ln
+import model.stylegan1.lreq as ln
 import math
 import matplotlib.pyplot as plt
 import sys
