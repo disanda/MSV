@@ -24,8 +24,8 @@ import torch.nn.functional as F
 # import sys
 # sys.path.append("..")
 
-from ..utils.biggan_config import BigGANConfig
-from ..utils.biggan_file_utils import cached_path
+from model.utils.biggan_config import BigGANConfig
+from model.utils.biggan_file_utils import cached_path
 
 logger = logging.getLogger(__name__)
 
