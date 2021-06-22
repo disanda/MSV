@@ -139,7 +139,7 @@ def train(tensor_writer = None, args = None):
         if type != 4:
             const2,w2 = E(imgs1)
         else:
-            const2,w2 = E(imgs1, cond_vector)
+            const2,w2 = E(imgs1, const1)
 
         if type == 1:
             imgs2=Gs.forward(w2,6)
