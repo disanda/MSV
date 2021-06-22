@@ -61,7 +61,7 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
 def train(tensor_writer = None, args = None):
     type = args.mtype
 
-    if type = 2: # StyleGAN2
+    if type == 2: # StyleGAN2
         generator = model_v2.StyleGAN2Generator(resolution=256).to(device)
         checkpoint = torch.load('./checkpoint/stylegan2_horse256.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
@@ -113,7 +113,7 @@ def train(tensor_writer = None, args = None):
 
         const2,w2 = E(imgs1.cuda())
 
-        if type = 2:
+        if type == 2:
             imgs2=Gs(w2)['image']
         else:
             imgs2=Gs.forward(w2,6)
@@ -249,7 +249,7 @@ if __name__ == "__main__":
     parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
-    parser.add_argument('--mtype', type=int, default=1)
+    parser.add_argument('--mtype', type=int, default=1) # StylrGAN1->1, StyleGAN2-> 2
     args = parser.parse_args()
 
     if args.experiment_dir == 'none':
