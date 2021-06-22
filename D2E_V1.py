@@ -1,10 +1,7 @@
-#training StyleGANs
-
 import os
 import torch
 import torchvision
-import model.E_v2_std as BE
-import model.stylegan2_generator as model_v2
+import model.E_v3 as BE
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips
@@ -12,8 +9,30 @@ import numpy as np
 import tensorboardX
 import argparse
 from apex import amp
+from model.stylegan1.net import Generator, Mapping #StyleGANv1
+import model.stylegan2_generator as model_v2 #StyleGANv2
+import model.pggan.pggan_generator as model_pggan #PGGAN
+from model.biggan_generator import BigGAN #BigGAN
 
+def one_hot(x, class_count=1000):
+    # 第一构造一个[class_count, class_count]的对角线为1的向量
+    # 第二保留label对应的行并返回
+    return torch.eye(class_count)[x,:]
 
+from scipy.stats import truncnorm
+def truncated_noise_sample(batch_size=1, dim_z=128, truncation=1., seed=None):
+    """ Create a truncated noise vector.
+        Params:
+            batch_size: batch size.
+            dim_z: dimension of z
+            truncation: truncation value to use
+            seed: seed for the random generator
+        Output:
+            array of shape (batch_size, dim_z)
+    """
+    state = None if seed is None else np.random.RandomState(seed)
+    values = truncnorm.rvs(-2, 2, size=(batch_size, dim_z), random_state=state).astype(np.float32)
+    return truncation * values
 
 def set_seed(seed): #随机数设置
     np.random.seed(seed)
@@ -64,7 +83,22 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
 def train(tensor_writer = None, args = None):
     type = args.mtype
 
-    if type == 2: # StyleGAN2
+    if type == 1: # StyleGAN1
+
+        Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+        Gs.load_state_dict(torch.load('./checkpoint/bedroom/bedrooms256_Gs_dict.pth'))
+
+        Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
+        Gm.load_state_dict(torch.load('./checkpoint/bedroom/bedrooms256_Gm_dict.pth'))
+
+        Gm.buffer1 = avg_tensor
+        const1 = Gs.const
+
+        Gs.eval()
+        Gm.eval()
+
+    elif type == 2:  # StyleGAN2
+
         generator = model_v2.StyleGAN2Generator(resolution=256).to(device)
         checkpoint = torch.load('./checkpoint/stylegan2_horse256.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
@@ -76,19 +110,31 @@ def train(tensor_writer = None, args = None):
         Gm = generator.mapping
         const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
+        generator.eval()
 
-    else:  # StyleGAN1
+    elif type == 3:  # PGGAN
 
-        Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-        Gs.load_state_dict(torch.load('./checkpoint/bedroom/bedrooms256_Gs_dict.pth'))
+        generator = model_pggan.PGGANGenerator(resolution=256).to(device)
+        checkpoint = torch.load('./checkpoint/pggan_horse256.pth') #map_location='cpu'
+        if 'generator_smooth' in checkpoint: #默认是这个
+            generator.load_state_dict(checkpoint['generator_smooth'])
+        else:
+            generator.load_state_dict(checkpoint['generator'])
+        const1 = torch.tensor(0)
+        generator.eval()
 
-        Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-        Gm.load_state_dict(torch.load('./checkpoint/bedroom/bedrooms256_Gm_dict.pth'))
+    elif type == 4:
 
-        Gm.buffer1 = avg_tensor
-        const1 = Gs.const
+        cache_path = './checkpoint/biggan/256/G-256.pt'
+        resolved_config_file = './checkpoint/biggan/256/biggan-deep-256-config.json'
+        config = BigGANConfig.from_json_file(resolved_config_file)
+        generator = BigGAN(config)
+        generator.load_state_dict(torch.load(cache_path))
+        generator.eval()
 
-
+    else:
+        print('error')
+        return
 
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
     #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
@@ -99,7 +145,7 @@ def train(tensor_writer = None, args = None):
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=args.lr, betas=(args.beta_1, 0.99), weight_decay=0) 
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 
-    if args.amp = True:
+    if args.amp == True:
         E, E_optimizer = amp.initialize(E, E_optimizer, opt_level="O1") # 这里是“欧一”，不是“零一”
 
     batch_size = args.batch_size
@@ -107,29 +153,47 @@ def train(tensor_writer = None, args = None):
     for epoch in range(0,args.epoch):
         set_seed(epoch%30000)
         z = torch.randn(batch_size, args.z_dim).cuda() #[32, 512]
-        if type == 2:
+
+        if type == 1:
+            with torch.no_grad(): #这里需要生成图片和变量
+                w1 = Gm(latents,coefs_m=coefs).to('cuda') #[batch_size,18,512]
+                imgs1 = Gs.forward(w1,6) # 7->512 / 6->256
+        elif type == 2:
             with torch.no_grad():
                 result_all = generator(z, **synthesis_kwargs)
                 imgs1 = result_all['image']
                 w1 = result_all['wp']
-        else:
+        elif type == 3:
             with torch.no_grad(): #这里需要生成图片和变量
-                w1 = Gm(latents,coefs_m=coefs).to('cuda') #[batch_size,18,512]
-                imgs1 = Gs.forward(w1,6) # 7->512 / 6->256
+                w1 = z
+                result_all = generator(w1)
+                imgs1 = result_all['image']
+        elif type == 4:
+            z = truncated_noise_sample(truncation=synthesis_kwargs, batch_size=batch_size, seed=epoch%30000)
+            #label = np.random.randint(1000,size=batch_size) # 生成标签
+            flag = np.random.randint(1000)
+            label = np.ones(batch_size)
+            label = flag * label
+            label = one_hot(label)
+            w1 = torch.tensor(z, dtype=torch.float).cuda()
+            conditions = torch.tensor(label, dtype=torch.float).cuda() # as label
+            truncation = torch.tensor(synthesis_kwargs, dtype=torch.float).cuda()
+            with torch.no_grad(): #这里需要生成图片和变量
+                imgs1, const1 = G(w1, conditions, truncation) # const1 are conditional vectors in BigGAN
 
-        const2,w2 = E(imgs1.cuda())
-
-        if type == 2:
-            imgs2=Gs(w2)['image']
+        if type not == 4:
+            const2,w2 = E(imgs1.cuda())
         else:
+            const2,w2 = E(imgs1.cuda(), cond_vector)
+
+        if type == 1:
             imgs2=Gs.forward(w2,6)
+        elif type == 2 or 3:
+            imgs2=Gs(w2)['image']
+        elif type == 4:
+            imgs2, _=G(w2, conditions, truncation)
 
         E_optimizer.zero_grad()
-
-
-
-
-
 
 #Latent-Vectors
 ## c
@@ -279,8 +343,8 @@ if __name__ == "__main__":
     parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
-    parser.add_argument('--mtype', type=int, default=1) # StylrGAN1->1, StyleGAN2-> 2
-    parser.add_argument('--amp', type=bool, default=True) # StylrGAN1->1, StyleGAN2-> 2
+    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--amp', type=bool, default=True) 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')

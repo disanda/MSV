@@ -12,7 +12,7 @@ from torch.nn import functional as F
 # 比第0版多了残差, 每一层的两个(conv/line)输出的w1和w2合并为1个w
 # 比第1版加了要学习的bias_1和bias_2，网络顺序和第1版有所不同(更对称)
 
-# 这一版的w只有std，没有mean
+# 这一版的w只有std，没有mean, 比马要差一些，参照3090-styleganv2马的训练
 
 class BEBlock(nn.Module):
     def __init__(self, inputs, outputs, latent_size, has_last_conv=True, fused_scale=True): #分辨率大于128用fused_scale,即conv完成上采样
