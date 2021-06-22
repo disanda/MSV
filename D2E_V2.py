@@ -75,6 +75,7 @@ def train(tensor_writer = None, args = None):
         config = BigGANConfig.from_json_file(resolved_config_file)
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(cache_path))
+        generator.cuda()
 
     else:
         print('error')
