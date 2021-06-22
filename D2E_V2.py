@@ -150,7 +150,7 @@ def train(tensor_writer = None, args = None):
         elif type == 2 or type == 3:
             imgs2=Gs(w2)['image']
         elif type == 4:
-            imgs2, _=G(w2, conditions, truncation)
+            imgs2, _ = generator(w2, conditions, truncation)
         else:
             print('model type error')
             return
