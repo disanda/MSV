@@ -131,7 +131,7 @@ def train(tensor_writer = None, args = None):
             label = one_hot(label)
             w1 = torch.tensor(z, dtype=torch.float).cuda()
             conditions = torch.tensor(label, dtype=torch.float).cuda() # as label
-            truncation = torch.tensor(synthesis_kwargs, dtype=torch.float).cuda()
+            truncation = torch.tensor(0.4, dtype=torch.float).cuda()
             with torch.no_grad(): #这里需要生成图片和变量
                 imgs1, const1 = generator(w1, conditions, truncation) # const1 are conditional vectors in BigGAN
 
