@@ -201,7 +201,7 @@ def train(tensor_writer = None, args = None):
         E_optimizer.step()
 
     ##--Image
-        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
+        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
         E_optimizer.zero_grad()
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
