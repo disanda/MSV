@@ -8,7 +8,7 @@ import lpips
 import numpy as np
 import tensorboardX
 import argparse
-from model.stylegan1.net import Generator_v1, Mapping_v1 #StyleGANv1
+from model.stylegan1.net import Generator, Mapping as Generator_v1, Mapping_v1 #StyleGANv1
 import model.stylegan2_generator as model_v2 #StyleGANv2
 import model.pggan.pggan_generator as model_pggan #PGGAN
 from model.biggan_generator import BigGAN #BigGAN
