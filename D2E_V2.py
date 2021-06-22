@@ -165,8 +165,8 @@ def train(tensor_writer = None, args = None):
         E_optimizer.step()
 
 #Image Space
-        mask_1 = grad_cam_plus_plus(imgs1,None) #[c,1,h,w]
-        mask_2 = grad_cam_plus_plus(imgs2,None)
+        mask_1 = grad_cam_plus_plus(imgs1.detach().clone(),None) #[c,1,h,w]
+        mask_2 = grad_cam_plus_plus(imgs2.detach().clone(),None)
         #imgs1.retain_grad()
         #imgs2.retain_grad()
         imgs1_ = imgs1.detach().clone()
