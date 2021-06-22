@@ -69,7 +69,7 @@ def train(tensor_writer = None, args = None):
         else:
             generator.load_state_dict(checkpoint['generator'])
         const1 = torch.tensor(0)
-        E = BE_PG.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+        E = BE_PG.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3, pggan=True)
 
     elif type == 4:
 
@@ -79,7 +79,7 @@ def train(tensor_writer = None, args = None):
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(cache_path))
         generator.cuda()
-        E = BE_BIG.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+        E = BE_BIG.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3, biggan=True)
 
     else:
         print('error')

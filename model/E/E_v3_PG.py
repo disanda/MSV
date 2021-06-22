@@ -108,7 +108,7 @@ class BEBlock(nn.Module):
 
 
 class BE(nn.Module):
-    def __init__(self, startf=16, maxf=512, layer_count=9, latent_size=512, channels=3, pggan=False, biggan=True):
+    def __init__(self, startf=16, maxf=512, layer_count=9, latent_size=512, channels=3, pggan=False):
         super().__init__()
         self.maxf = maxf
         self.startf = startf
