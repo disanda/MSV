@@ -8,7 +8,7 @@ import lpips
 import numpy as np
 import tensorboardX
 import argparse
-from model.stylegan1.net import Generator, Mapping as Generator_v1, Mapping_v1 #StyleGANv1
+from model.stylegan1.net import Generator, Mapping #StyleGANv1
 import model.stylegan2_generator as model_v2 #StyleGANv2
 import model.pggan.pggan_generator as model_pggan #PGGAN
 from model.biggan_generator import BigGAN #BigGAN
@@ -84,10 +84,10 @@ def train(tensor_writer = None, args = None):
 
     if type == 1: # StyleGAN1
 
-        Gs = Generator_v1(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+        Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
         Gs.load_state_dict(torch.load('./checkpoint/cat/cat256_Gs_dict.pth'))
 
-        Gm = Mapping_v1(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
+        Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
         Gm.load_state_dict(torch.load('./checkpoint/cat/cat256_Gm_dict.pth'))
 
         Gm.buffer1 = torch.load('./checkpoint/cat/cat256_tensor.pt')
