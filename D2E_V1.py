@@ -8,8 +8,7 @@ import lpips
 import numpy as np
 import tensorboardX
 import argparse
-from apex import amp
-from model.stylegan1.net import Generator, Mapping #StyleGANv1
+from model.stylegan1.net import Generator_v1, Mapping_v1 #StyleGANv1
 import model.stylegan2_generator as model_v2 #StyleGANv2
 import model.pggan.pggan_generator as model_pggan #PGGAN
 from model.biggan_generator import BigGAN #BigGAN
@@ -85,20 +84,21 @@ def train(tensor_writer = None, args = None):
 
     if type == 1: # StyleGAN1
 
-        Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-        Gs.load_state_dict(torch.load('./checkpoint/bedroom/bedrooms256_Gs_dict.pth'))
+        Gs = Generator_v1(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+        Gs.load_state_dict(torch.load('./checkpoint/cat/cat256_Gs_dict.pth'))
 
-        Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-        Gm.load_state_dict(torch.load('./checkpoint/bedroom/bedrooms256_Gm_dict.pth'))
+        Gm = Mapping_v1(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
+        Gm.load_state_dict(torch.load('./checkpoint/cat/cat256_Gm_dict.pth'))
 
-        Gm.buffer1 = torch.load('./checkpoint/bedroom/bedrooms256_tensor.pt')
-        const1 = Gs.const
+        Gm.buffer1 = torch.load('./checkpoint/cat/cat256_tensor.pt')
+        const_ = Gs.const
+        const1 = const_.repeat(args.batch_size,1,1,1)
         layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
         layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
         ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
         coefs = torch.where(layer_idx < layer_num//2, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1]
 
-        Gs.eval()
+        Gs.cuda()
         Gm.eval()
 
     elif type == 2:  # StyleGAN2
@@ -114,7 +114,7 @@ def train(tensor_writer = None, args = None):
         Gm = generator.mapping
         const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
-        generator.eval()
+
 
     elif type == 3:  # PGGAN
 
@@ -125,7 +125,7 @@ def train(tensor_writer = None, args = None):
         else:
             generator.load_state_dict(checkpoint['generator'])
         const1 = torch.tensor(0)
-        generator.eval()
+
 
     elif type == 4:
 
@@ -134,7 +134,6 @@ def train(tensor_writer = None, args = None):
         config = BigGANConfig.from_json_file(resolved_config_file)
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(cache_path))
-        generator.eval()
 
     else:
         print('error')
@@ -142,7 +141,6 @@ def train(tensor_writer = None, args = None):
 
     E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
     #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
-    Gs.cuda()
     E.cuda()
     writer = tensor_writer
 
@@ -156,11 +154,11 @@ def train(tensor_writer = None, args = None):
     it_d = 0
     for epoch in range(0,args.epoch):
         set_seed(epoch%30000)
-        z = torch.randn(batch_size, args.z_dim).cuda() #[32, 512]
+        z = torch.randn(batch_size, args.z_dim) #[32, 512]
 
         if type == 1:
             with torch.no_grad(): #这里需要生成图片和变量
-                w1 = Gm(z,coefs_m=coefs).to('cuda') #[batch_size,18,512]
+                w1 = Gm(z,coefs_m=coefs).cuda() #[batch_size,18,512]
                 imgs1 = Gs.forward(w1,6) # 7->512 / 6->256
         elif type == 2:
             with torch.no_grad():
@@ -183,12 +181,12 @@ def train(tensor_writer = None, args = None):
             conditions = torch.tensor(label, dtype=torch.float).cuda() # as label
             truncation = torch.tensor(synthesis_kwargs, dtype=torch.float).cuda()
             with torch.no_grad(): #这里需要生成图片和变量
-                imgs1, const1 = G(w1, conditions, truncation) # const1 are conditional vectors in BigGAN
+                imgs1, const1 = generator(w1, conditions, truncation) # const1 are conditional vectors in BigGAN
 
         if type != 4:
-            const2,w2 = E(imgs1.cuda())
+            const2,w2 = E(imgs1)
         else:
-            const2,w2 = E(imgs1.cuda(), cond_vector)
+            const2,w2 = E(imgs1, cond_vector)
 
         if type == 1:
             imgs2=Gs.forward(w2,6)
@@ -206,21 +204,13 @@ def train(tensor_writer = None, args = None):
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
         E_optimizer.zero_grad()
-        if args.amp == True:
-            with amp.scale_loss(loss_c, optimizer) as scaled_loss:
-                scaled_loss.backward(retain_graph=True)
-        else:
-            loss_c.backward(retain_graph=True)
+        loss_c.backward(retain_graph=True)
         E_optimizer.step()
 
 ## w
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
         E_optimizer.zero_grad()
-        if args.amp == True:
-            with amp.scale_loss(loss_w, optimizer) as scaled_loss:
-                scaled_loss.backward(retain_graph=True)
-        else:
-            loss_w.backward(retain_graph=True)
+        loss_w.backward(retain_graph=True)
         E_optimizer.step()
 
 
@@ -231,11 +221,7 @@ def train(tensor_writer = None, args = None):
         imgs_small_2 = imgs2[:,:,imgs2.shape[2]//20:-imgs2.shape[2]//20,imgs2.shape[3]//20:-imgs2.shape[3]//20].clone()
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        if args.amp == True:
-            with amp.scale_loss(loss_small, optimizer) as scaled_loss:
-                scaled_loss.backward(retain_graph=True)
-        else:
-            loss_small.backward(retain_graph=True)
+        loss_small.backward(retain_graph=True)
         E_optimizer.step()
 
 
@@ -244,21 +230,13 @@ def train(tensor_writer = None, args = None):
         imgs_medium_2 = imgs2[:,:,imgs2.shape[2]//10:-imgs2.shape[2]//10,imgs2.shape[3]//10:-imgs2.shape[3]//10].clone()
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        if args.amp == True:
-            with amp.scale_loss(loss_medium, optimizer) as scaled_loss:
-                scaled_loss.backward(retain_graph=True)
-        else:
-            loss_medium.backward(retain_graph=True)
+        loss_medium.backward(retain_graph=True)
         E_optimizer.step()
 
 #loss3 Images
         loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        if args.amp == True:
-            with amp.scale_loss(loss_imgs, optimizer) as scaled_loss:
-                scaled_loss.backward(retain_graph=True)
-        else:
-            loss_imgs.backward(retain_graph=True)
+        loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
 
         print('i_'+str(epoch))
@@ -351,7 +329,6 @@ if __name__ == "__main__":
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
     parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
-    parser.add_argument('--amp', type=bool, default=True) 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
