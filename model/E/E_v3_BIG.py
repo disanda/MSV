@@ -217,10 +217,10 @@ class BE(nn.Module):
             # else:
             #     w = torch.cat((w_,w),dim=1)
         if self.biggan:
-            cond_vector = self.new_final_1(x.view(x.shape[0],-1)) #[n, 256], cond_vector
-            z = self.new_final_2(cond_vector) # [n, 128]
+            x = self.new_final_1(x.view(x.shape[0],-1)) #[n, 256], cond_vector
+            z = self.new_final_2(x) # [n, 128]
             #w_ = self.new_final_3(x) # [n, 1000]
-        return cond_vector, z
+        return x, z
 
 #test
 # E = BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
