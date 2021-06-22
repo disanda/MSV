@@ -147,9 +147,6 @@ def train(tensor_writer = None, args = None):
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=args.lr, betas=(args.beta_1, 0.99), weight_decay=0) 
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 
-    if args.amp == True:
-        E, E_optimizer = amp.initialize(E, E_optimizer, opt_level="O1") # 这里是“欧一”，不是“零一”
-
     batch_size = args.batch_size
     it_d = 0
     for epoch in range(0,args.epoch):
