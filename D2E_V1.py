@@ -1,7 +1,7 @@
 import os
 import torch
 import torchvision
-import model.E_v3 as BE
+import model.E.E_v3 as BE
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips
