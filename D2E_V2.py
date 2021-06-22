@@ -5,7 +5,6 @@ import torchvision
 import model.E.E_v3 as BE
 from model.utils.custom_adam import LREQAdam
 import lpips
-import metric.pytorch_ssim as pytorch_ssim
 from metric.grad_cam import GradCAM, GradCamPlusPlus, GuidedBackPropagation, mask2cam
 import tensorboardX
 import numpy as np
