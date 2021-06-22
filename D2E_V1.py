@@ -331,7 +331,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == 'none':
-        resultPath = "./result/StyleGANv1_bedroom"
+        resultPath = "./result/StyleGANv1_cat"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
