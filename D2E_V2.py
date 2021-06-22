@@ -13,6 +13,7 @@ from model.stylegan1.net import Generator, Mapping #StyleGANv1
 import model.stylegan2_generator as model_v2 #StyleGANv2
 import model.pggan.pggan_generator as model_pggan #PGGAN
 from model.biggan_generator import BigGAN #BigGAN
+from model.utils.biggan_config import BigGANConfig
 from training_utils import *
 
 #torch.backends.cudnn.enabled = True
