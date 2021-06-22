@@ -350,4 +350,4 @@ if __name__ == "__main__":
     if not os.path.exists(writer_path): os.mkdir(writer_path)
     writer = tensorboardX.SummaryWriter(writer_path)
 
-    train(generator=generator, tensor_writer=writer, synthesis_kwargs=synthesis_kwargs)
+    train(tensor_writer=writer, args)
