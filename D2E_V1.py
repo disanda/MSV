@@ -181,7 +181,7 @@ def train(tensor_writer = None, args = None):
             with torch.no_grad(): #这里需要生成图片和变量
                 imgs1, const1 = G(w1, conditions, truncation) # const1 are conditional vectors in BigGAN
 
-        if type not == 4:
+        if type != 4:
             const2,w2 = E(imgs1.cuda())
         else:
             const2,w2 = E(imgs1.cuda(), cond_vector)
@@ -192,6 +192,9 @@ def train(tensor_writer = None, args = None):
             imgs2=Gs(w2)['image']
         elif type == 4:
             imgs2, _=G(w2, conditions, truncation)
+        else:
+            print('model type error')
+            return
 
         E_optimizer.zero_grad()
 
