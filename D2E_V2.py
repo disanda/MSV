@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torchvision
 import model.E.E_v3 as BE
+import model.E.E_v3_BIG as BE_BIG
+import model.E.E_v3_PG as BE_PG
 from model.utils.custom_adam import LREQAdam
 import lpips
 from metric.grad_cam import GradCAM, GradCamPlusPlus, GuidedBackPropagation, mask2cam
@@ -41,6 +43,7 @@ def train(tensor_writer = None, args = None):
 
         Gs.cuda()
         Gm.eval()
+        E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
 
     elif type == 2:  # StyleGAN2
 
@@ -55,7 +58,7 @@ def train(tensor_writer = None, args = None):
         Gm = generator.mapping
         const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
-
+        E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
 
     elif type == 3:  # PGGAN
 
@@ -66,7 +69,7 @@ def train(tensor_writer = None, args = None):
         else:
             generator.load_state_dict(checkpoint['generator'])
         const1 = torch.tensor(0)
-
+        E = BE_PG.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
 
     elif type == 4:
 
@@ -76,13 +79,14 @@ def train(tensor_writer = None, args = None):
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(cache_path))
         generator.cuda()
+        E = BE_BIG.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
 
     else:
         print('error')
         return
 
 
-    E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+
     #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
     E.cuda()
     writer = tensor_writer
