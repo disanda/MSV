@@ -11,6 +11,9 @@ import lpips
 import numpy as np
 import tensorboardX
 import argparse
+from apex import amp
+
+
 
 def set_seed(seed): #随机数设置
     np.random.seed(seed)
@@ -71,16 +74,16 @@ def train(tensor_writer = None, args = None):
         synthesis_kwargs = dict(trunc_psi=0.7,trunc_layers=8,randomize_noise=False)
         Gs = generator.synthesis
         Gm = generator.mapping
-        const_r = torch.randn(batch_size)
+        const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
 
     else:  # StyleGAN1
 
         Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
-        Gs.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gs_dict.pth'))
+        Gs.load_state_dict(torch.load('./checkpoint/bedroom/bedrooms256_Gs_dict.pth'))
 
         Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-        Gm.load_state_dict(torch.load('./pre-model/bedroom/bedrooms256_Gm_dict.pth'))
+        Gm.load_state_dict(torch.load('./checkpoint/bedroom/bedrooms256_Gm_dict.pth'))
 
         Gm.buffer1 = avg_tensor
         const1 = Gs.const
@@ -96,12 +99,15 @@ def train(tensor_writer = None, args = None):
     E_optimizer = LREQAdam([{'params': E.parameters()},], lr=args.lr, betas=(args.beta_1, 0.99), weight_decay=0) 
     loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
 
+    if args.amp = True:
+        E, E_optimizer = amp.initialize(E, E_optimizer, opt_level="O1") # 这里是“欧一”，不是“零一”
+
     batch_size = args.batch_size
     it_d = 0
     for epoch in range(0,args.epoch):
         set_seed(epoch%30000)
         z = torch.randn(batch_size, args.z_dim).cuda() #[32, 512]
-        if type = 2:
+        if type == 2:
             with torch.no_grad():
                 result_all = generator(z, **synthesis_kwargs)
                 imgs1 = result_all['image']
@@ -120,18 +126,30 @@ def train(tensor_writer = None, args = None):
 
         E_optimizer.zero_grad()
 
-#Latent-Vectors
 
+
+
+
+
+#Latent-Vectors
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
         E_optimizer.zero_grad()
-        loss_c.backward(retain_graph=True)
+        if args.amp == True:
+            with amp.scale_loss(loss_c, optimizer) as scaled_loss:
+                scaled_loss.backward(retain_graph=True)
+        else:
+            loss_c.backward(retain_graph=True)
         E_optimizer.step()
 
 ## w
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
         E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
+        if args.amp == True:
+            with amp.scale_loss(loss_w, optimizer) as scaled_loss:
+                scaled_loss.backward(retain_graph=True)
+        else:
+            loss_w.backward(retain_graph=True)
         E_optimizer.step()
 
 
@@ -142,7 +160,11 @@ def train(tensor_writer = None, args = None):
         imgs_small_2 = imgs2[:,:,imgs2.shape[2]//20:-imgs2.shape[2]//20,imgs2.shape[3]//20:-imgs2.shape[3]//20].clone()
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        loss_small.backward(retain_graph=True)
+        if args.amp == True:
+            with amp.scale_loss(loss_small, optimizer) as scaled_loss:
+                scaled_loss.backward(retain_graph=True)
+        else:
+            loss_small.backward(retain_graph=True)
         E_optimizer.step()
 
 
@@ -151,13 +173,21 @@ def train(tensor_writer = None, args = None):
         imgs_medium_2 = imgs2[:,:,imgs2.shape[2]//10:-imgs2.shape[2]//10,imgs2.shape[3]//10:-imgs2.shape[3]//10].clone()
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        loss_medium.backward(retain_graph=True)
+        if args.amp == True:
+            with amp.scale_loss(loss_medium, optimizer) as scaled_loss:
+                scaled_loss.backward(retain_graph=True)
+        else:
+            loss_medium.backward(retain_graph=True)
         E_optimizer.step()
 
 #loss3 Images
         loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
         E_optimizer.zero_grad()
-        loss_imgs.backward(retain_graph=True)
+        if args.amp == True:
+            with amp.scale_loss(loss_imgs, optimizer) as scaled_loss:
+                scaled_loss.backward(retain_graph=True)
+        else:
+            loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
 
         print('i_'+str(epoch))
@@ -241,7 +271,7 @@ def train(tensor_writer = None, args = None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epochs', type=int, default=20000)
+    parser.add_argument('--epoch', type=int, default=20000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=10)
@@ -250,10 +280,13 @@ if __name__ == "__main__":
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
     parser.add_argument('--mtype', type=int, default=1) # StylrGAN1->1, StyleGAN2-> 2
+    parser.add_argument('--amp', type=bool, default=True) # StylrGAN1->1, StyleGAN2-> 2
     args = parser.parse_args()
 
-    if args.experiment_dir == 'none':
-        resultPath = "./result/StyleGANv2_horse256_attentionV1_Ev2_wSTDv2"
+    if not os.path.exists('./result'): os.mkdir('./result')
+    resultPath = args.experiment_dir
+    if resultPath == 'none':
+        resultPath = "./result/StyleGANv1_bedroom"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
