@@ -1,4 +1,5 @@
 import os
+import math
 import torch
 import torchvision
 import model.E.E_v3 as BE
@@ -19,7 +20,7 @@ def train(tensor_writer = None, args = None):
 
     if type == 1: # StyleGAN1
 
-        Gs = Generator(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+        Gs = Generator(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         Gs.load_state_dict(torch.load('./checkpoint/cat/cat256_Gs_dict.pth'))
 
         Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
@@ -36,9 +37,11 @@ def train(tensor_writer = None, args = None):
         Gs.cuda()
         Gm.eval()
 
+        E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+
     elif type == 2:  # StyleGAN2
 
-        generator = model_v2.StyleGAN2Generator(resolution=256).to(device)
+        generator = model_v2.StyleGAN2Generator(resolution=int(math.log(args.img_size,2)-1)).to(device)
         checkpoint = torch.load('./checkpoint/stylegan2_horse256.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
             generator.load_state_dict(checkpoint['generator_smooth'])
@@ -50,10 +53,12 @@ def train(tensor_writer = None, args = None):
         const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
 
+        #E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+        E = BE.BE(startf=16, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
     elif type == 3:  # PGGAN
 
-        generator = model_pggan.PGGANGenerator(resolution=256).to(device)
+        generator = model_pggan.PGGANGenerator(resolution=int(math.log(args.img_size,2)-1)).to(device)
         checkpoint = torch.load('./checkpoint/pggan_horse256.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #默认是这个
             generator.load_state_dict(checkpoint['generator_smooth'])
@@ -61,6 +66,7 @@ def train(tensor_writer = None, args = None):
             generator.load_state_dict(checkpoint['generator'])
         const1 = torch.tensor(0)
 
+        E = BE_PG.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
 
     elif type == 4:
 
@@ -70,11 +76,12 @@ def train(tensor_writer = None, args = None):
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(cache_path))
 
+        E = BE_BIG.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
+
     else:
         print('error')
         return
 
-    E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
     #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
     E.cuda()
     writer = tensor_writer
