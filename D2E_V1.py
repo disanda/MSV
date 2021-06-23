@@ -49,12 +49,12 @@ def train(tensor_writer = None, args = None):
             generator.load_state_dict(checkpoint['generator'])
         synthesis_kwargs = dict(trunc_psi=0.7,trunc_layers=8,randomize_noise=False)
         Gs = generator.synthesis
+        Gs.cuda()
         Gm = generator.mapping
         truncation = generator.truncation
         const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
 
-        Gs.cuda()
         #E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         E = BE.BE(startf=16, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
