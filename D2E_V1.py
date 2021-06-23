@@ -41,7 +41,7 @@ def train(tensor_writer = None, args = None):
 
     elif type == 2:  # StyleGAN2
 
-        generator = model_v2.StyleGAN2Generator(resolution=int(math.log(args.img_size,2)-1)).to(device)
+        generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
         checkpoint = torch.load('./checkpoint/stylegan2_horse256.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
             generator.load_state_dict(checkpoint['generator_smooth'])
@@ -58,7 +58,7 @@ def train(tensor_writer = None, args = None):
 
     elif type == 3:  # PGGAN
 
-        generator = model_pggan.PGGANGenerator(resolution=int(math.log(args.img_size,2)-1)).to(device)
+        generator = model_pggan.PGGANGenerator(resolution=args.img_size).to(device)
         checkpoint = torch.load('./checkpoint/pggan_horse256.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #默认是这个
             generator.load_state_dict(checkpoint['generator_smooth'])
@@ -259,7 +259,7 @@ def train(tensor_writer = None, args = None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epoch', type=int, default=20000)
+    parser.add_argument('--epoch', type=int, default=200,000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=10)

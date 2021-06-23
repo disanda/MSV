@@ -324,7 +324,7 @@ def train(tensor_writer = None, args = None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epoch', type=int, default=200000)
+    parser.add_argument('--epoch', type=int, default=200 000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=3)
