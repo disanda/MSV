@@ -55,8 +55,8 @@ def train(tensor_writer = None, args = None):
         else:
             generator.load_state_dict(checkpoint['generator'])
         synthesis_kwargs = dict(trunc_psi=0.7,trunc_layers=8,randomize_noise=False)
-        Gs = generator.synthesis
-        Gm = generator.mapping
+        #Gs = generator.synthesis
+        #Gm = generator.mapping
         const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
         #E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 256
@@ -150,7 +150,7 @@ def train(tensor_writer = None, args = None):
         if type == 1:
             imgs2=Gs.forward(w2,6)
         elif type == 2 or type == 3:
-            imgs2=Gs(w2)['image']
+            imgs2=generator.synthesis(w2)['image']
         elif type == 4:
             imgs2, _ = generator(w2, conditions, truncation)
         else:
