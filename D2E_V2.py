@@ -49,7 +49,7 @@ def train(tensor_writer = None, args = None):
     elif type == 2:  # StyleGAN2
 
         generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
-        checkpoint = torch.load('./checkpoint/stylegan2_ffhq1024.pth') #map_location='cpu'
+        checkpoint = torch.load('./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
             generator.load_state_dict(checkpoint['generator_smooth'])
         else:
@@ -324,7 +324,7 @@ def train(tensor_writer = None, args = None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epoch', type=int, default=200 000)
+    parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=3)
@@ -338,7 +338,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == 'none':
-        resultPath = "./result/StyleGAN2-face1024-modelv3-gradC"
+        resultPath = "./result/StyleGAN2-face1024-modelv3-gradC-INnoAffine"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

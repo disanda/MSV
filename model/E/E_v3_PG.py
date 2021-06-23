@@ -29,7 +29,7 @@ import model.utils.lreq as ln
 class FromRGB(nn.Module):
     def __init__(self, channels, outputs):
         super(FromRGB, self).__init__()
-        self.from_rgb = torch.nn.Conv2d(channels, outputs, 1, 1, 0)
+        self.from_rgb = ln.Conv2d(channels, outputs, 1, 1, 0)
     def forward(self, x):
         x = self.from_rgb(x)
         x = F.leaky_relu(x, 0.2)
@@ -42,14 +42,14 @@ class BEBlock(nn.Module):
         self.noise_weight_1 = nn.Parameter(torch.Tensor(1, inputs, 1, 1))
         self.noise_weight_1.data.zero_()
         self.bias_1 = nn.Parameter(torch.Tensor(1, inputs, 1, 1))
-        self.instance_norm_1 = nn.InstanceNorm2d(inputs, affine=True, eps=1e-8)
+        self.instance_norm_1 = nn.InstanceNorm2d(inputs, affine=False, eps=1e-8)
         #self.inver_mod1 = ln.Linear(2 * inputs, latent_size) # [n, 2c] -> [n,512]
         self.conv_1 = ln.Conv2d(inputs, inputs, 3, 1, 1, bias=False)
 
         self.noise_weight_2 = nn.Parameter(torch.Tensor(1, outputs, 1, 1))
         self.noise_weight_2.data.zero_()
         self.bias_2 = nn.Parameter(torch.Tensor(1, outputs, 1, 1))
-        self.instance_norm_2 = nn.InstanceNorm2d(outputs, affine=True, eps=1e-8)
+        self.instance_norm_2 = nn.InstanceNorm2d(outputs, affine=False, eps=1e-8)
         #self.inver_mod2 = ln.Linear(2 * inputs, latent_size)
         if has_second_conv:
             if fused_scale:
