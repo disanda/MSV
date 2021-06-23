@@ -47,8 +47,8 @@ def train(tensor_writer = None, args = None):
 
     elif type == 2:  # StyleGAN2
 
-        generator = model_v2.StyleGAN2Generator(resolution=256).to(device)
-        checkpoint = torch.load('./checkpoint/stylegan2_horse256.pth') #map_location='cpu'
+        generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
+        checkpoint = torch.load('./checkpoint/stylegan2_ffhq1024.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
             generator.load_state_dict(checkpoint['generator_smooth'])
         else:
@@ -58,11 +58,12 @@ def train(tensor_writer = None, args = None):
         Gm = generator.mapping
         const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
-        E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3)
+        #E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 256
+        E = BE.BE(startf=16, maxf=512, layer_count=7, latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
     elif type == 3:  # PGGAN
 
-        generator = model_pggan.PGGANGenerator(resolution=256).to(device)
+        generator = model_pggan.PGGANGenerator(resolution=args.img_size).to(device)
         checkpoint = torch.load('./checkpoint/pggan_horse256.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #默认是这个
             generator.load_state_dict(checkpoint['generator_smooth'])
@@ -109,7 +110,7 @@ def train(tensor_writer = None, args = None):
 
 
     it_d = 0
-    for epoch in range(0,250001):
+    for epoch in range(0,args.epoch):
         set_seed(epoch%30000)
         z = torch.randn(batch_size, args.z_dim) #[32, 512]
 
@@ -322,21 +323,21 @@ def train(tensor_writer = None, args = None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epoch', type=int, default=20000)
+    parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=10)
+    parser.add_argument('--batch_size', type=int, default=3)
     parser.add_argument('--experiment_dir', default='none')
-    parser.add_argument('--img_size',type=int, default=256)
+    parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128
-    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == 'none':
-        resultPath = "./result/BigGAN-256"
+        resultPath = "./result/StyleGAN2-face1024-modelv3-gradC"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
