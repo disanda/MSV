@@ -41,7 +41,7 @@ def train(tensor_writer = None, args = None):
 
     elif type == 2:  # StyleGAN2
 
-        generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
+        generator = model_v2.StyleGAN2Generator(resolution=args.img_size)
         checkpoint = torch.load('./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
             generator.load_state_dict(checkpoint['generator_smooth'])
@@ -50,9 +50,11 @@ def train(tensor_writer = None, args = None):
         synthesis_kwargs = dict(trunc_psi=0.7,trunc_layers=8,randomize_noise=False)
         Gs = generator.synthesis
         Gm = generator.mapping
+        truncation = generator.truncation
         const_r = torch.randn(args.batch_size)
         const1 = Gs.early_layer(const_r) #[n,512,4,4]
 
+        Gs.cuda()
         #E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         E = BE.BE(startf=16, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
@@ -101,9 +103,27 @@ def train(tensor_writer = None, args = None):
                 imgs1 = Gs.forward(w1,6) # 7->512 / 6->256
         elif type == 2:
             with torch.no_grad():
-                result_all = generator(z.cuda(), **synthesis_kwargs)
-                imgs1 = result_all['image']
-                w1 = result_all['wp']
+                ##use generator
+                # result_all = generator(z.cuda(), **synthesis_kwargs)
+                # imgs1 = result_all['image']
+                # w1 = result_all['wp']
+
+                mapping_results = Gm(z)
+                w = mapping_results['w']
+                batch_w_avg = w.mean(dim=0)
+                truncation.w_avg.copy_(truncation.w_avg * 0.995 + batch_w_avg * (1 - 0.995))
+                new_z = torch.randn_like(z)
+                new_w = Gm(new_z)['w']
+
+                if np.random.uniform() < 0.9:
+                    mixing_cutoff = np.random.randint(1, int(np.log2(args.img_size // 4 * 2)) * 2)
+                    w = truncation(w)
+                    new_w = truncation(new_w)
+                    w[:, :mixing_cutoff] = new_w[:, :mixing_cutoff]
+
+                w1 = truncation(w,trunc_psi=0.7,trunc_layers=8).cuda()
+                imgs1 = Gs(w1)['image']
+
         elif type == 3:
             with torch.no_grad(): #这里需要生成图片和变量
                 w1 = z.cuda()
@@ -273,7 +293,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == 'none':
-        resultPath = "./result/StyleGAN2-face1024-modelv3-Aligned-INnoAffine"
+        resultPath = "./result/StyleGAN2-face1024-modelv3-Aligned-INnoAffine-Gs2cuda"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
@@ -286,7 +306,7 @@ if __name__ == "__main__":
     if not os.path.exists(writer_path): os.mkdir(writer_path)
     writer = tensorboardX.SummaryWriter(writer_path)
 
-    use_gpu = True
-    device = torch.device("cuda" if use_gpu else "cpu")
+    # use_gpu = True
+    # device = torch.device("cuda" if use_gpu else "cpu")
 
     train(tensor_writer=writer, args = args)
