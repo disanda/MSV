@@ -26,10 +26,10 @@ from training_utils import *
 def train(tensor_writer = None, args = None):
     type = args.mtype
 
-        #model_path = './checkpoint/cat256/'
-        #config_path = 
+        model_path = args.checkpoint_dir
+        config_path = args.config_path
     if type == 1: # StyleGAN1
-        model_path = './checkpoint/cat256/'
+        #model_path = './checkpoint/cat256/'
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
 
@@ -332,6 +332,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=3)
     parser.add_argument('--experiment_dir', default=None)
     parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth')
+    parser.add_argument('--config_dir', default=None)
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128
