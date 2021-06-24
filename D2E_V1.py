@@ -18,8 +18,8 @@ from training_utils import *
 def train(tensor_writer = None, args = None):
     type = args.mtype
 
-        model_path = args.checkpoint_dir
-        config_path = args.config_path
+    model_path = args.checkpoint_dir
+    config_path = args.config_path
     if type == 1: # StyleGAN1
         #model_path = './checkpoint/stylegan_v1/ffhq1024/'
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
@@ -291,7 +291,7 @@ if __name__ == "__main__":
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
-    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
     parser.add_argument('--start_features', type=int, default=16) 
     args = parser.parse_args()
 
