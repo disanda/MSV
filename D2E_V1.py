@@ -286,7 +286,7 @@ if __name__ == "__main__":
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=3)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/FFHQ1024') #None
+    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/ffhq1024/') #None
     parser.add_argument('--config_dir', default=None)
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
