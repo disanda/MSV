@@ -2,12 +2,12 @@ import torch
 import numpy as np
 from scipy.stats import truncnorm
 import metric.pytorch_ssim as pytorch_ssim
+from torch.nn import functional as F
 
 def one_hot(x, class_count=1000):
     # 第一构造一个[class_count, class_count]的对角线为1的向量
     # 第二保留label对应的行并返回
     return torch.eye(class_count)[x,:]
-
 
 def truncated_noise_sample(batch_size=1, dim_z=128, truncation=1., seed=None):
     """ Create a truncated noise vector.
@@ -52,6 +52,14 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
     imgs1_cos = imgs1.view(-1)
     imgs2_cos = imgs2.view(-1)
     loss_imgs_cosine = 1 - imgs1_cos.dot(imgs2_cos)/(torch.sqrt(imgs1_cos.dot(imgs1_cos))*torch.sqrt(imgs2_cos.dot(imgs2_cos))) #[-1,1],-1:反向相反，1:方向相同
+
+    if imgs1.shape[2] != imgs2.shape[2]:
+        print('error: imgs1 is not equal imgs2')
+        return
+
+    if imgs1.shape[2] > 256:
+        imgs1 = F.avg_pool2d(imgs1,2,2)
+        imgs2 = F.avg_pool2d(imgs2,2,2)
 
     if  image_space:
         ssim_value = pytorch_ssim.ssim(imgs1, imgs2) # while ssim_value<0.999:

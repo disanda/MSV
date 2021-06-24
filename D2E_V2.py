@@ -120,7 +120,7 @@ def train(tensor_writer = None, args = None):
         if type == 1:
             with torch.no_grad(): #这里需要生成图片和变量
                 w1 = Gm(z,coefs_m=coefs).cuda() #[batch_size,18,512]
-                imgs1 = Gs.forward(w1,6) # 7->512 / 6->256
+                imgs1 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
         elif type == 2:
             with torch.no_grad():
                 result_all = generator(z.cuda(), **synthesis_kwargs)
@@ -150,7 +150,7 @@ def train(tensor_writer = None, args = None):
             const2,w2 = E(imgs1, const1)
 
         if type == 1:
-            imgs2=Gs.forward(w2,6)
+            imgs2=Gs.forward(w2,int(math.log(args.img_size,2)-2))
         elif type == 2 or type == 3:
             imgs2=generator.synthesis(w2)['image']
         elif type == 4:
