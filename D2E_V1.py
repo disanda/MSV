@@ -23,7 +23,7 @@ def train(tensor_writer = None, args = None):
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
 
-        Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
+        Gm = Mapping(num_layers=int(math.log(args.img_size,2)-1)*2, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
         Gm.load_state_dict(torch.load(model_path+'Gm_dict.pth'))
 
         Gm.buffer1 = torch.load(model_path+'./center_tensor.pt')
