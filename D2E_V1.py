@@ -29,7 +29,7 @@ def train(tensor_writer = None, args = None):
         Gm.buffer1 = torch.load(model_path+'./center_tensor.pt')
         const_ = Gs.const
         const1 = const_.repeat(args.batch_size,1,1,1).cuda()
-        layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
+        layer_num = int(math.log(args.img_size,2)-1)*2 # 14->256 / 16 -> 512  / 18->1024 
         layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
         ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
         coefs = torch.where(layer_idx < layer_num//2, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1]
@@ -40,9 +40,9 @@ def train(tensor_writer = None, args = None):
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
 
     elif type == 2:  # StyleGAN2
-
+        model_path = './checkpoint/stylegan_v2/stylegan2_ffhq1024.pth'
         generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
-        checkpoint = torch.load('./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #map_location='cpu'
+        checkpoint = torch.load(model_path) #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
             generator.load_state_dict(checkpoint['generator_smooth'])
         else:
@@ -59,9 +59,9 @@ def train(tensor_writer = None, args = None):
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
     elif type == 3:  # PGGAN
-
+        model_path = './checkpoint/PGGAN/pggan_horse256.pth'
         generator = model_pggan.PGGANGenerator(resolution=args.img_size).to(device)
-        checkpoint = torch.load('./checkpoint/pggan_horse256.pth') #map_location='cpu'
+        checkpoint = torch.load(model_path) #map_location='cpu'
         if 'generator_smooth' in checkpoint: #默认是这个
             generator.load_state_dict(checkpoint['generator_smooth'])
         else:
@@ -71,12 +71,11 @@ def train(tensor_writer = None, args = None):
         E = BE_PG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
 
     elif type == 4:
-
-        cache_path = './checkpoint/biggan/256/G-256.pt'
-        resolved_config_file = './checkpoint/biggan/256/biggan-deep-256-config.json'
-        config = BigGANConfig.from_json_file(resolved_config_file)
+        model_path = './checkpoint/biggan/256/G-256.pt'
+        config_file = './checkpoint/biggan/256/biggan-deep-256-config.json'
+        config = BigGANConfig.from_json_file(config_file)
         generator = BigGAN(config)
-        generator.load_state_dict(torch.load(cache_path))
+        generator.load_state_dict(torch.load(model_path))
 
         E = BE_BIG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
 
@@ -284,7 +283,7 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=3)
-    parser.add_argument('--experiment_dir', default='./result/StyleGAN2-face1024-modelv3-Aligned-INnoAffine-Gall2cuda') #None
+    parser.add_argument('--experiment_dir', default=None) #None
     parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #None
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
@@ -295,8 +294,8 @@ if __name__ == "__main__":
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
-    if resultPath == 'none':
-        resultPath = "./result/StyleGAN2-FFHQ1024-Aligned-Img"
+    if resultPath == None:
+        resultPath = "./result/StyleGAN1-FFHQ1024-Aligned-Img"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

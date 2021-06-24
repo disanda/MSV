@@ -330,7 +330,7 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=3)
-    parser.add_argument('--experiment_dir', default='none')
+    parser.add_argument('--experiment_dir', default=None)
     parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth')
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
@@ -341,7 +341,7 @@ if __name__ == "__main__":
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
-    if resultPath == 'none':
+    if resultPath == None:
         resultPath = "./result/StyleGAN2-face1024-modelv3-gradC-INnoAffine"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
