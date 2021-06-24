@@ -19,14 +19,14 @@ def train(tensor_writer = None, args = None):
     type = args.mtype
 
     if type == 1: # StyleGAN1
-
-        Gs = Generator(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
-        Gs.load_state_dict(torch.load('./checkpoint/cat/cat256_Gs_dict.pth'))
+        model_path = './checkpoint/stylegan_v1/ffhq1024/'
+        Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+        Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
 
         Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-        Gm.load_state_dict(torch.load('./checkpoint/cat/cat256_Gm_dict.pth'))
+        Gm.load_state_dict(torch.load(model_path+'Gm_dict.pth'))
 
-        Gm.buffer1 = torch.load('./checkpoint/cat/cat256_tensor.pt')
+        Gm.buffer1 = torch.load(model_path+'./center_tensor.pt')
         const_ = Gs.const
         const1 = const_.repeat(args.batch_size,1,1,1).cuda()
         layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
@@ -37,7 +37,7 @@ def train(tensor_writer = None, args = None):
         Gs.cuda()
         Gm.eval()
 
-        E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+        E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
 
     elif type == 2:  # StyleGAN2
 
@@ -56,7 +56,7 @@ def train(tensor_writer = None, args = None):
         const1 = generator.synthesis.early_layer(const_r) #[n,512,4,4]
 
         #E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
-        E = BE.BE(startf=16, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
+        E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
     elif type == 3:  # PGGAN
 
@@ -68,7 +68,7 @@ def train(tensor_writer = None, args = None):
             generator.load_state_dict(checkpoint['generator'])
         const1 = torch.tensor(0)
 
-        E = BE_PG.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
+        E = BE_PG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
 
     elif type == 4:
 
@@ -78,7 +78,7 @@ def train(tensor_writer = None, args = None):
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(cache_path))
 
-        E = BE_BIG.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
+        E = BE_BIG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
 
     else:
         print('error')
@@ -284,17 +284,19 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=3)
-    parser.add_argument('--experiment_dir', default='none')
+    parser.add_argument('--experiment_dir', default='./result/StyleGAN2-face1024-modelv3-Aligned-INnoAffine-Gall2cuda') #None
+    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #None
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
     parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--start_features', type=int, default=16) 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == 'none':
-        resultPath = "./result/StyleGAN2-face1024-modelv3-Aligned-INnoAffine-Gall2cuda"
+        resultPath = "./result/StyleGAN2-FFHQ1024-Aligned-Img"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

@@ -26,17 +26,15 @@ from training_utils import *
 def train(tensor_writer = None, args = None):
     type = args.mtype
 
-        #model_path = './checkpoint/cat256/'
-        #config_path = 
     if type == 1: # StyleGAN1
-        model_path = './checkpoint/cat256/'
-        Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
-        Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
+
+        Gs = Generator(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+        Gs.load_state_dict(torch.load('./checkpoint/cat/cat256_Gs_dict.pth'))
 
         Gm = Mapping(num_layers=14, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-        Gm.load_state_dict(torch.load(model_path+'/Gm_dict.pth'))
+        Gm.load_state_dict(torch.load('./checkpoint/cat/cat256_Gm_dict.pth'))
 
-        Gm.buffer1 = torch.load(model_path+'/tensor.pt')
+        Gm.buffer1 = torch.load('./checkpoint/cat/cat256_tensor.pt')
         const_ = Gs.const
         const1 = const_.repeat(args.batch_size,1,1,1).cuda()
         layer_num = 14 # 14->256 / 16 -> 512  / 18->1024 
@@ -46,12 +44,12 @@ def train(tensor_writer = None, args = None):
 
         Gs.cuda()
         Gm.eval()
-        E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+        E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
 
     elif type == 2:  # StyleGAN2
-        model_path ='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth'
+
         generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
-        checkpoint = torch.load(model_path) #map_location='cpu'
+        checkpoint = torch.load('./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
             generator.load_state_dict(checkpoint['generator_smooth'])
         else:
@@ -62,28 +60,28 @@ def train(tensor_writer = None, args = None):
         const_r = torch.randn(args.batch_size)
         const1 = generator.synthesis.early_layer(const_r) #[n,512,4,4]
         #E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 256
-        E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
+        E = BE.BE(startf=16, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
     elif type == 3:  # PGGAN
-        model_path = './checkpoint/pggan_horse256.pth'
+
         generator = model_pggan.PGGANGenerator(resolution=args.img_size).to(device)
-        checkpoint = torch.load(model_path) #map_location='cpu'
+        checkpoint = torch.load('./checkpoint/pggan_horse256.pth') #map_location='cpu'
         if 'generator_smooth' in checkpoint: #默认是这个
             generator.load_state_dict(checkpoint['generator_smooth'])
         else:
             generator.load_state_dict(checkpoint['generator'])
         const1 = torch.tensor(0)
-        E = BE_PG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
+        E = BE_PG.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
 
     elif type == 4:
 
-        model_path = './checkpoint/biggan/256/G-256.pt' 
-        config_path = './checkpoint/biggan/256/biggan-deep-256-config.json'
-        config = BigGANConfig.from_json_file(config_path)
+        cache_path = './checkpoint/biggan/256/G-256.pt'
+        resolved_config_file = './checkpoint/biggan/256/biggan-deep-256-config.json'
+        config = BigGANConfig.from_json_file(resolved_config_file)
         generator = BigGAN(config)
-        generator.load_state_dict(torch.load(model_path))
+        generator.load_state_dict(torch.load(cache_path))
         generator.cuda()
-        E = BE_BIG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
+        E = BE_BIG.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
 
     else:
         print('error')
@@ -331,12 +329,10 @@ if __name__ == "__main__":
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=3)
     parser.add_argument('--experiment_dir', default='none')
-    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth')
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128
     parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
-    parser.add_argument('--start_features', type=int, default=16) 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
