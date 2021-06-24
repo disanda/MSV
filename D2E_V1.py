@@ -19,7 +19,7 @@ def train(tensor_writer = None, args = None):
     type = args.mtype
 
     model_path = args.checkpoint_dir
-    config_path = args.config_path
+    config_path = args.config_dir
     if type == 1: # StyleGAN1
         #model_path = './checkpoint/stylegan_v1/ffhq1024/'
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
