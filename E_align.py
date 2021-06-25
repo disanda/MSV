@@ -164,12 +164,14 @@ def train(tensor_writer = None, args = None):
 #Latent-Vectors
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+        locc_c = locc_c*0.01
         E_optimizer.zero_grad()
         loss_c.backward(retain_graph=True)
         E_optimizer.step()
 
 ## w
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+        locc_w = locc_w*0.01
         E_optimizer.zero_grad()
         loss_w.backward(retain_graph=True)
         E_optimizer.step()
@@ -190,12 +192,14 @@ def train(tensor_writer = None, args = None):
         imgs_medium_1 = imgs1[:,:,imgs1.shape[2]//10:-imgs1.shape[2]//10,imgs1.shape[3]//10:-imgs1.shape[3]//10].detach().clone()
         imgs_medium_2 = imgs2[:,:,imgs2.shape[2]//10:-imgs2.shape[2]//10,imgs2.shape[3]//10:-imgs2.shape[3]//10].detach().clone()
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
+        loss_medium = 0.7 * loss_medium
         E_optimizer.zero_grad()
         loss_medium.backward(retain_graph=True)
         E_optimizer.step()
 
 #loss3 Images
         loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
+        loss_imgs = 0.5 * loss_imgs
         E_optimizer.zero_grad()
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
@@ -284,21 +288,21 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=3)
+    parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--experiment_dir', default=None) #None
     parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/ffhq1024/') #None
     parser.add_argument('--config_dir', default=None)
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
-    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
     parser.add_argument('--start_features', type=int, default=16) 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN1-FFHQ1024-Aligned-Img"
+        resultPath = "./result/StyleGAN2-FFHQ1024-Aligned-Img-LossRate"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
