@@ -4,6 +4,16 @@ from scipy.stats import truncnorm
 import metric.pytorch_ssim as pytorch_ssim
 from torch.nn import functional as F
 
+def get_parameter_number(net):
+    total_num = sum(p.numel() for p in net.parameters())
+    trainable_num = sum(p.numel() for p in net.parameters() if p.requires_grad)
+    return {'Total': total_num, 'Trainable': trainable_num}
+
+def get_para_GByte(parameter_number):
+     x=parameter_number['Total']*8/1024/1024/1024
+     y=parameter_number['Total']*8/1024/1024/1024
+     return {'Total_GB': x, 'Trainable_BG': y}
+
 def one_hot(x, class_count=1000):
     # 第一构造一个[class_count, class_count]的对角线为1的向量
     # 第二保留label对应的行并返回

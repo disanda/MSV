@@ -21,7 +21,7 @@ def train(tensor_writer = None, args = None):
     model_path = args.checkpoint_dir
     config_path = args.config_dir
     if type == 1: # StyleGAN1
-        #model_path = './checkpoint/stylegan_v1/ffhq1024/'
+        model_path = './checkpoint/stylegan_v1/ffhq1024/'
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
 
@@ -164,14 +164,14 @@ def train(tensor_writer = None, args = None):
 #Latent-Vectors
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-        locc_c = locc_c*0.01
+        loss_c = loss_c*0.01
         E_optimizer.zero_grad()
         loss_c.backward(retain_graph=True)
         E_optimizer.step()
 
 ## w
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        locc_w = locc_w*0.01
+        loss_w = loss_w*0.01
         E_optimizer.zero_grad()
         loss_w.backward(retain_graph=True)
         E_optimizer.step()
@@ -295,14 +295,14 @@ if __name__ == "__main__":
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
-    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
     parser.add_argument('--start_features', type=int, default=16) 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-FFHQ1024-Aligned-Img-LossRate"
+        resultPath = "./result/StyleGAN1-FFHQ1024-Aligned-Img-LossRate"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
