@@ -57,7 +57,7 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
         print('error: imgs1 is not equal imgs2')
         return
 
-    if imgs1.shape[2] > 256:
+    while imgs1.shape[2] > 256:
         imgs1 = F.avg_pool2d(imgs1,2,2)
         imgs2 = F.avg_pool2d(imgs2,2,2)
 
