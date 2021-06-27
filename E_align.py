@@ -2,7 +2,7 @@ import os
 import math
 import torch
 import torchvision
-import model.E.E_v2 as BE
+import model.E.E_v1 as BE
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips
@@ -85,7 +85,7 @@ def train(tensor_writer = None, args = None):
         print('error')
         return
 
-    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
+    E.load_state_dict(torch.load('/MSV/result/StyleGAN2-FFHQ1024-Aligned-Img-goonwith115000/models/E_model_ep75000.pth'))
     E.cuda()
     writer = tensor_writer
 
@@ -161,45 +161,10 @@ def train(tensor_writer = None, args = None):
 
         E_optimizer.zero_grad()
 
-#Latent-Vectors
-## c
-        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-        loss_c = loss_c*0.01
-        E_optimizer.zero_grad()
-        loss_c.backward(retain_graph=True)
-        E_optimizer.step()
-
-## w
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        loss_w = loss_w*0.01
-        E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
-        E_optimizer.step()
-
-
 #Image-Vectors 
 
-##loss1 AT2
-        imgs_small_1 = imgs1[:,:,imgs1.shape[2]//20:-imgs1.shape[2]//20,imgs1.shape[3]//20:-imgs1.shape[3]//20].detach().clone() # w,h
-        imgs_small_2 = imgs2[:,:,imgs2.shape[2]//20:-imgs2.shape[2]//20,imgs2.shape[3]//20:-imgs2.shape[3]//20].detach().clone()
-        loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
-        E_optimizer.zero_grad()
-        loss_small.backward(retain_graph=True)
-        E_optimizer.step()
-
-
-#loss2 AT1
-        imgs_medium_1 = imgs1[:,:,imgs1.shape[2]//10:-imgs1.shape[2]//10,imgs1.shape[3]//10:-imgs1.shape[3]//10].detach().clone()
-        imgs_medium_2 = imgs2[:,:,imgs2.shape[2]//10:-imgs2.shape[2]//10,imgs2.shape[3]//10:-imgs2.shape[3]//10].detach().clone()
-        loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
-        loss_medium = 0.7 * loss_medium
-        E_optimizer.zero_grad()
-        loss_medium.backward(retain_graph=True)
-        E_optimizer.step()
-
-#loss3 Images
+#loss Images
         loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
-        loss_imgs = 0.5 * loss_imgs
         E_optimizer.zero_grad()
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
@@ -213,6 +178,56 @@ def train(tensor_writer = None, args = None):
         print('---------LatentSpace--------')
         print('loss_w_info: %s'%loss_w_info)
         print('loss_c_info: %s'%loss_c_info)
+
+# # Attention region for Aligned Images
+# AT1 = imgs_torch[:,:,:,imgs_torch.shape[3]//8:-imgs_torch.shape[3]//8]
+# torchvision.utils.save_image(AT1,'./img_torch_at1.png')
+
+# AT2 = imgs_torch[:,:,\
+# imgs_torch.shape[2]//8+imgs_torch.shape[2]//32:-imgs_torch.shape[2]//8-imgs_torch.shape[2]//32,\
+# imgs_torch.shape[3]//8+imgs_torch.shape[3]//32:-imgs_torch.shape[3]//8-imgs_torch.shape[3]//32
+# ]
+
+#loss AT1
+        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8].detach().clone()
+        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8].detach().clone()
+        loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
+        loss_medium = 3 * loss_medium
+        E_optimizer.zero_grad()
+        loss_medium.backward(retain_graph=True)
+        E_optimizer.step()
+
+##loss AT2
+        imgs_small_1 = imgs1[:,:,\
+        imgs1.shape[2]//8+imgs1.shape[2]//32:-imgs1.shape[2]//8-imgs1.shape[2]//32,\
+        imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32].detach().clone()
+
+        imgs_small_2 = imgs2[:,:,\
+        imgs2.shape[2]//8+imgs2.shape[2]//32:-imgs2.shape[2]//8-imgs2.shape[2]//32,\
+        imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32].detach().clone()
+
+        loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
+        loss_small = 5 * loss_small
+        E_optimizer.zero_grad()
+        loss_small.backward(retain_graph=True)
+        E_optimizer.step()
+
+
+#Latent-Vectors
+
+## w
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+        loss_w = loss_w*0.01
+        E_optimizer.zero_grad()
+        loss_w.backward(retain_graph=True)
+        E_optimizer.step()
+
+## c
+        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+        loss_c = loss_c*0.01
+        E_optimizer.zero_grad()
+        loss_c.backward(retain_graph=True)
+        E_optimizer.step()
 
         it_d += 1
         writer.add_scalar('loss_small_mse', loss_small_info[0][0], global_step=it_d)
@@ -302,7 +317,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-FFHQ1024-Aligned-V2-FuseScale128True"
+        resultPath = "./result/StyleGAN2-FFHQ1024-Aligned-modelV1-fixATloss-goonwithBugloss115000+75000"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

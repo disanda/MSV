@@ -50,9 +50,9 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
     imgs2 = imgs2.contiguous()
 
     loss_imgs_mse_1 = loss_mse(imgs1,imgs2)
-    loss_imgs_mse_2 = loss_mse(imgs1.mean(),imgs2.mean())
-    loss_imgs_mse_3 = loss_mse(imgs1.std(),imgs2.std())
-    loss_imgs_mse = loss_imgs_mse_1 + loss_imgs_mse_2 + loss_imgs_mse_3
+    #loss_imgs_mse_2 = loss_mse(imgs1.mean(),imgs2.mean())
+    #loss_imgs_mse_3 = loss_mse(imgs1.std(),imgs2.std())
+    loss_imgs_mse = loss_imgs_mse_1 #+ loss_imgs_mse_2 + loss_imgs_mse_3
 
     imgs1_kl, imgs2_kl = torch.nn.functional.softmax(imgs1),torch.nn.functional.softmax(imgs2)
     loss_imgs_kl = loss_kl(torch.log(imgs2_kl),imgs1_kl) #D_kl(True=y1_imgs||Fake=y2_imgs)
@@ -82,6 +82,6 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
     else:
         loss_imgs_lpips = torch.tensor(0)
 
-    loss_imgs = loss_imgs_mse + loss_imgs_kl + loss_imgs_cosine + loss_imgs_ssim + loss_imgs_lpips
+    loss_imgs = 5*loss_imgs_mse + loss_imgs_kl + 3*loss_imgs_cosine + loss_imgs_ssim + 2*loss_imgs_lpips
     loss_info = [[loss_imgs_mse_1.item(),loss_imgs_mse_2.item(),loss_imgs_mse_3.item()], loss_imgs_kl.item(), loss_imgs_cosine.item(), loss_imgs_ssim.item(), loss_imgs_lpips.item()]
     return loss_imgs, loss_info
