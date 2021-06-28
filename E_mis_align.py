@@ -49,7 +49,7 @@ def train(tensor_writer = None, args = None):
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
 
     elif type == 2:  # StyleGAN2
-        model_path ='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth'
+        #model_path ='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth'
         generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
         checkpoint = torch.load(model_path) #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
@@ -65,7 +65,7 @@ def train(tensor_writer = None, args = None):
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
     elif type == 3:  # PGGAN
-        model_path = './checkpoint/pggan_horse256.pth'
+        #model_path = './checkpoint/pggan_horse256.pth'
         generator = model_pggan.PGGANGenerator(resolution=args.img_size).to(device)
         checkpoint = torch.load(model_path) #map_location='cpu'
         if 'generator_smooth' in checkpoint: #默认是这个
@@ -77,8 +77,8 @@ def train(tensor_writer = None, args = None):
 
     elif type == 4:
 
-        model_path = './checkpoint/biggan/256/G-256.pt' 
-        config_path = './checkpoint/biggan/256/biggan-deep-256-config.json'
+        #model_path = './checkpoint/biggan/256/G-256.pt' 
+        #config_path = './checkpoint/biggan/256/biggan-deep-256-config.json'
         config = BigGANConfig.from_json_file(config_path)
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(model_path))
@@ -89,9 +89,7 @@ def train(tensor_writer = None, args = None):
         print('error')
         return
 
-
-
-    #E.load_state_dict(torch.load('/_yucheng/myStyle/myStyle-v1/EAE-car-cat/result/EB_cat_cosine_v2/E_model_ep80000.pth'))
+    E.load_state_dict(torch.load('/_wmwang/MSV/result/StyleGAN1-CAT256-Aligned-modelV2-fixATloss/models/E_model_ep25000.pth'))
     E.cuda()
     writer = tensor_writer
 
@@ -323,10 +321,10 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=3)
+    parser.add_argument('--batch_size', type=int, default=10)
     parser.add_argument('--experiment_dir', default=None)
-    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth')
-    parser.add_argument('--config_dir', default=None)
+    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/cat/')
+    parser.add_argument('--config_dir', default=None) # BigGAN needs it
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128
@@ -337,7 +335,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-face1024-modelv3-gradC-INnoAffine"
+        resultPath = "./result/StyleGAN2-cat256-modelv2-gradCFixLoss-GoOnW15000"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

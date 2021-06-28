@@ -21,7 +21,7 @@ def train(tensor_writer = None, args = None):
     model_path = args.checkpoint_dir
     config_path = args.config_dir
     if type == 1: # StyleGAN1
-        model_path = './checkpoint/stylegan_v1/ffhq1024/'
+        #model_path = './checkpoint/stylegan_v1/ffhq1024/'
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
 
@@ -85,7 +85,7 @@ def train(tensor_writer = None, args = None):
         print('error')
         return
 
-    E.load_state_dict(torch.load('/MSV/result/StyleGAN2-FFHQ1024-Aligned-Img-goonwith115000/models/E_model_ep75000.pth'))
+    E.load_state_dict(torch.load('/_wmwang/MSV/result/StyleGAN1-CAT256-Aligned-modelV2-fixATloss/models/E_model_ep25000.pth'))
     E.cuda()
     writer = tensor_writer
 
@@ -304,10 +304,10 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=12)
+    parser.add_argument('--batch_size', type=int, default=10)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/cat') #None  ./checkpoint/stylegan_v1/ffhq1024/
-    parser.add_argument('--config_dir', default=None)
+    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/cat/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth
+    parser.add_argument('--config_dir', default=None) # BigGAN needs it
     parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
@@ -318,7 +318,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./_wmwang/result/StyleGAN1-CAT256-Aligned-modelV2-fixATloss"
+        resultPath = "./result/StyleGAN1-cat256-Aligned-modelV2-fixATloss-GoOnW15000"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
