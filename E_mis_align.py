@@ -161,19 +161,6 @@ def train(tensor_writer = None, args = None):
         
         E_optimizer.zero_grad()
 
-#Latent Space
-    ##--C
-        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-        E_optimizer.zero_grad()
-        loss_c.backward(retain_graph=True)
-        E_optimizer.step()
-
-    ##--W
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
-        E_optimizer.step()
-
 #Image Space
         mask_1 = grad_cam_plus_plus(imgs1.detach().clone(),None) #[c,1,h,w]
         mask_2 = grad_cam_plus_plus(imgs2.detach().clone(),None)
@@ -188,27 +175,7 @@ def train(tensor_writer = None, args = None):
         heatmap_1,cam_1 = mask2cam(mask_1,imgs1)
         heatmap_2,cam_2 = mask2cam(mask_2,imgs2)
 
-    ##--Mask_Cam
-        mask_1 = mask_1.cuda().float()
-        mask_1.requires_grad=True
-        mask_2 = mask_2.cuda().float()
-        mask_2.requires_grad=True
-        loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
-
-        E_optimizer.zero_grad()
-        loss_mask.backward(retain_graph=True)
-        E_optimizer.step()
-
-    ##--Grad
-        grad_1 = grad_1.cuda().float()
-        grad_1.requires_grad=True
-        grad_2 = grad_2.cuda().float()
-        grad_2.requires_grad=True
-        loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips_model=loss_lpips)
-
-        E_optimizer.zero_grad()
-        loss_grad.backward(retain_graph=True)
-        E_optimizer.step()
+        loss_grad, loss_grad_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
 
     ##--Image
         loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
@@ -216,15 +183,42 @@ def train(tensor_writer = None, args = None):
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
 
-    ##--Grad_CAM from mask
+    ##--Grad_CAM as AT1 (from mask with img)
         cam_1 = cam_1.cuda().float()
         cam_1.requires_grad=True
         cam_2 = cam_2.cuda().float()
         cam_2.requires_grad=True
         loss_Gcam, loss_Gcam_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
-
+        loss_Gcam_ = 3 * loss_Gcam
         E_optimizer.zero_grad()
-        loss_Gcam.backward(retain_graph=True)
+        loss_Gcam_.backward(retain_graph=True)
+        E_optimizer.step()
+
+    ##--Mask_Cam as AT2 (HeatMap from Mask)
+        mask_1 = mask_1.cuda().float()
+        mask_1.requires_grad=True
+        mask_2 = mask_2.cuda().float()
+        mask_2.requires_grad=True
+        loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
+
+        loss_mask_ = 5 * loss_mask
+        E_optimizer.zero_grad()
+        loss_mask_.backward(retain_graph=True)
+        E_optimizer.step()
+
+#Latent Space
+    ##--C
+        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+        loss_c_ = loss_c * 0.01
+        E_optimizer.zero_grad()
+        loss_c_.backward(retain_graph=True)
+        E_optimizer.step()
+
+    ##--W
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+        loss_w_ = loss_w * 0.01
+        E_optimizer.zero_grad()
+        loss_w_.backward(retain_graph=True)
         E_optimizer.step()
 
         print('i_'+str(epoch))

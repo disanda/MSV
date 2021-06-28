@@ -50,8 +50,8 @@ def space_loss(imgs1,imgs2,image_space=True,lpips_model=None):
     imgs2 = imgs2.contiguous()
 
     loss_imgs_mse_1 = loss_mse(imgs1,imgs2)
-    #loss_imgs_mse_2 = loss_mse(imgs1.mean(),imgs2.mean())
-    #loss_imgs_mse_3 = loss_mse(imgs1.std(),imgs2.std())
+    loss_imgs_mse_2 = loss_mse(imgs1.mean(),imgs2.mean())
+    loss_imgs_mse_3 = loss_mse(imgs1.std(),imgs2.std())
     loss_imgs_mse = loss_imgs_mse_1 #+ loss_imgs_mse_2 + loss_imgs_mse_3
 
     imgs1_kl, imgs2_kl = torch.nn.functional.softmax(imgs1),torch.nn.functional.softmax(imgs2)

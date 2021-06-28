@@ -28,7 +28,7 @@ class BEBlock(nn.Module):
         self.bias_2 = nn.Parameter(torch.Tensor(1, outputs, 1, 1))
         self.instance_norm_2 = nn.InstanceNorm2d(inputs, affine=False, eps=1e-8)
         self.inver_mod2 = ln.Linear(2 * inputs, latent_size, gain=1)
-        self.blur = Blur(inputs)
+        #self.blur = Blur(inputs)
         if has_last_conv:
             if fused_scale:
                 self.conv_2 = ln.Conv2d(inputs, outputs, 3, 2, 1, bias=False, transform_kernel=True)
@@ -67,7 +67,7 @@ class BEBlock(nn.Module):
 
         x = self.instance_norm_2(x)
         if self.has_last_conv:
-            x = self.blur(x)
+            #x = self.blur(x)
             x = self.conv_2(x)
             x = torch.addcmul(x, value=1.0, tensor1=self.noise_weight_2, tensor2=torch.randn([x.shape[0], 1, x.shape[2], x.shape[3]]).to(x.device))
             x = x + self.bias_2
@@ -101,7 +101,8 @@ class BE(nn.Module):
         for i in range(layer_count):
 
             has_last_conv = i+1 != layer_count
-            fused_scale = resolution >= 128 # 在新的一层起初 fused_scale = flase, 完成上采样
+            #fused_scale = resolution >= 128 # 在新的一层起初 fused_scale = flase, 完成上采样
+            fused_scale = False
 
             #from_RGB.append(FromRGB(channels, inputs))
             block = BEBlock(inputs, outputs, latent_size, has_last_conv, fused_scale=fused_scale)

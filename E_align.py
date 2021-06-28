@@ -169,16 +169,6 @@ def train(tensor_writer = None, args = None):
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
 
-        print('i_'+str(epoch))
-        print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_ssim, loss_imgs_cosine, loss_kl_imgs, loss_imgs_lpips]')
-        print('---------ImageSpace--------')
-        print('loss_small_info: %s'%loss_small_info)
-        print('loss_medium_info: %s'%loss_medium_info)
-        print('loss_imgs_info: %s'%loss_imgs_info)
-        print('---------LatentSpace--------')
-        print('loss_w_info: %s'%loss_w_info)
-        print('loss_c_info: %s'%loss_c_info)
-
 # # Attention region for Aligned Images
 # AT1 = imgs_torch[:,:,:,imgs_torch.shape[3]//8:-imgs_torch.shape[3]//8]
 # torchvision.utils.save_image(AT1,'./img_torch_at1.png')
@@ -192,9 +182,9 @@ def train(tensor_writer = None, args = None):
         imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8].detach().clone()
         imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8].detach().clone()
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
-        loss_medium = 3 * loss_medium
+        loss_medium_ = 3 * loss_medium
         E_optimizer.zero_grad()
-        loss_medium.backward(retain_graph=True)
+        loss_medium_.backward(retain_graph=True)
         E_optimizer.step()
 
 ##loss AT2
@@ -207,9 +197,9 @@ def train(tensor_writer = None, args = None):
         imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32].detach().clone()
 
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
-        loss_small = 5 * loss_small
+        loss_small_ = 5 * loss_small
         E_optimizer.zero_grad()
-        loss_small.backward(retain_graph=True)
+        loss_small_.backward(retain_graph=True)
         E_optimizer.step()
 
 
@@ -217,17 +207,28 @@ def train(tensor_writer = None, args = None):
 
 ## w
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        loss_w = loss_w*0.01
+        loss_w_ = loss_w*0.01
         E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
+        loss_w_.backward(retain_graph=True)
         E_optimizer.step()
 
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-        loss_c = loss_c*0.01
+        loss_c_ = loss_c*0.01
         E_optimizer.zero_grad()
-        loss_c.backward(retain_graph=True)
+        loss_c_.backward(retain_graph=True)
         E_optimizer.step()
+
+        print('i_'+str(epoch))
+        print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_ssim, loss_imgs_cosine, loss_kl_imgs, loss_imgs_lpips]')
+        print('---------ImageSpace--------')
+        print('loss_small_info: %s'%loss_small_info)
+        print('loss_medium_info: %s'%loss_medium_info)
+        print('loss_imgs_info: %s'%loss_imgs_info)
+        print('---------LatentSpace--------')
+        print('loss_w_info: %s'%loss_w_info)
+        print('loss_c_info: %s'%loss_c_info)
+
 
         it_d += 1
         writer.add_scalar('loss_small_mse', loss_small_info[0][0], global_step=it_d)
@@ -303,21 +304,21 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=2)
+    parser.add_argument('--batch_size', type=int, default=12)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #None  ./checkpoint/stylegan_v1/ffhq1024/
+    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/cat') #None  ./checkpoint/stylegan_v1/ffhq1024/
     parser.add_argument('--config_dir', default=None)
-    parser.add_argument('--img_size',type=int, default=1024)
+    parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
-    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
-    parser.add_argument('--start_features', type=int, default=16) 
+    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--start_features', type=int, default=64)  # 16->1024 32->512 64->256
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-FFHQ1024-Aligned-modelV1-fixATloss-goonwithBugloss115000+75000"
+        resultPath = "./_wmwang/result/StyleGAN2-FFHQ1024-Aligned-modelV1-fixATloss-goonwithBugloss115000+75000"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
