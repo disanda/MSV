@@ -2,7 +2,7 @@ import os
 import math
 import torch
 import torchvision
-import model.E.E_v1 as BE
+import model.E.E_v2 as BE
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips
@@ -318,7 +318,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./_wmwang/result/StyleGAN2-FFHQ1024-Aligned-modelV1-fixATloss-goonwithBugloss115000+75000"
+        resultPath = "./_wmwang/result/StyleGAN1-CAT256-Aligned-modelV2-fixATloss"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
