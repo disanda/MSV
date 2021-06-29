@@ -3,9 +3,7 @@ import math
 import torch
 import torch.nn as nn
 import torchvision
-import model.E.E_v3 as BE
-import model.E.E_v3_BIG as BE_BIG
-import model.E.E_v3_PG as BE_PG
+import model.E.E_v2 as BE
 from model.utils.custom_adam import LREQAdam
 import lpips
 from metric.grad_cam import GradCAM, GradCamPlusPlus, GuidedBackPropagation, mask2cam
@@ -36,7 +34,7 @@ def train(tensor_writer = None, args = None):
         Gm = Mapping(num_layers=int(math.log(args.img_size,2)-1)*2, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
         Gm.load_state_dict(torch.load(model_path+'/Gm_dict.pth'))
 
-        Gm.buffer1 = torch.load(model_path+'/tensor.pt')
+        Gm.buffer1 = torch.load(model_path+'/center_tensor.pt')
         const_ = Gs.const
         const1 = const_.repeat(args.batch_size,1,1,1).cuda()
         layer_num = int(math.log(args.img_size,2)-1)*2 # 14->256 / 16 -> 512  / 18->1024 
@@ -89,7 +87,7 @@ def train(tensor_writer = None, args = None):
         print('error')
         return
 
-    E.load_state_dict(torch.load('/_wmwang/MSV/result/StyleGAN1-CAT256-Aligned-modelV2-fixATloss/models/E_model_ep25000.pth'))
+    #E.load_state_dict(torch.load('/_wmwang/MSV/result/StyleGAN1-CAT256-Aligned-modelV2-fixATloss/models/E_model_ep25000.pth'))
     E.cuda()
     writer = tensor_writer
 
@@ -173,7 +171,7 @@ def train(tensor_writer = None, args = None):
         heatmap_1,cam_1 = mask2cam(mask_1,imgs1)
         heatmap_2,cam_2 = mask2cam(mask_2,imgs2)
 
-        loss_grad, loss_grad_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
+        loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips_model=loss_lpips)
 
     ##--Image
         loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
@@ -321,21 +319,21 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=10)
+    parser.add_argument('--batch_size', type=int, default=5)
     parser.add_argument('--experiment_dir', default=None)
-    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/cat/')
+    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/car/')
     parser.add_argument('--config_dir', default=None) # BigGAN needs it
-    parser.add_argument('--img_size',type=int, default=1024)
+    parser.add_argument('--img_size',type=int, default=512)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128
     parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
-    parser.add_argument('--start_features', type=int, default=16) 
+    parser.add_argument('--start_features', type=int, default=32) # 16->1024 32->512 64->256 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-cat256-modelv2-gradCFixLoss-GoOnW15000"
+        resultPath = "./result/StyleGAN1-car512-GradCAM-modelV2"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
