@@ -24,7 +24,7 @@ from training_utils import *
 def train(tensor_writer = None, args = None):
     type = args.mtype
 
-    model_path = args.checkpoint_dir
+    model_path = args.checkpoint_dir_GAN
     config_path = args.config_dir
     if type == 1: # StyleGAN1
         #model_path = './checkpoint/cat256/'
@@ -87,7 +87,8 @@ def train(tensor_writer = None, args = None):
         print('error')
         return
 
-    #E.load_state_dict(torch.load('/_wmwang/MSV/result/StyleGAN1-CAT256-Aligned-modelV2-fixATloss/models/E_model_ep25000.pth'))
+    if args.checkpoint_dir_E != None:
+        E.load_state_dict(torch.load(args.checkpoint_dir_E))
     E.cuda()
     writer = tensor_writer
 
@@ -185,7 +186,7 @@ def train(tensor_writer = None, args = None):
         cam_2 = cam_2.cuda().float()
         cam_2.requires_grad=True
         loss_Gcam, loss_Gcam_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
-        loss_Gcam_ = 3 * loss_Gcam
+        loss_Gcam_ = 5 * loss_Gcam
         E_optimizer.zero_grad()
         loss_Gcam_.backward(retain_graph=True)
         E_optimizer.step()
@@ -197,7 +198,7 @@ def train(tensor_writer = None, args = None):
         mask_2.requires_grad=True
         loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
 
-        loss_mask_ = 5 * loss_mask
+        loss_mask_ = 7 * loss_mask
         E_optimizer.zero_grad()
         loss_mask_.backward(retain_graph=True)
         E_optimizer.step()
@@ -321,19 +322,20 @@ if __name__ == "__main__":
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=5)
     parser.add_argument('--experiment_dir', default=None)
-    parser.add_argument('--checkpoint_dir', default='./checkpoint/stylegan_v1/car/')
+    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/car/')
     parser.add_argument('--config_dir', default=None) # BigGAN needs it
+    parser.add_argument('--checkpoint_dir_E', default='./result/StyleGAN1-car512-Aligned-modelV2/models/E_model_ep100000.pth')
     parser.add_argument('--img_size',type=int, default=512)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128
-    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN00
     parser.add_argument('--start_features', type=int, default=32) # 16->1024 32->512 64->256 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN1-car512-GradCAM-modelV2"
+        resultPath = "./result/StyleGAN1-car512-GradCAM-modelV2-goOnw-align100,000"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
