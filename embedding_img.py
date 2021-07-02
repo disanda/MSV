@@ -20,166 +20,57 @@ def train(tensor_writer = None, args = None):
 
     model_path = args.checkpoint_dir_GAN
     config_path = args.config_dir
-    if type == 1: # StyleGAN1
-        #model_path = './checkpoint/stylegan_v1/ffhq1024/'
-        Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
-        Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
 
-        Gm = Mapping(num_layers=int(math.log(args.img_size,2)-1)*2, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
-        Gm.load_state_dict(torch.load(model_path+'Gm_dict.pth'))
+    Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+    Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
 
-        Gm.buffer1 = torch.load(model_path+'./center_tensor.pt')
-        const_ = Gs.const
-        const1 = const_.repeat(args.batch_size,1,1,1).cuda()
-        layer_num = int(math.log(args.img_size,2)-1)*2 # 14->256 / 16 -> 512  / 18->1024 
-        layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
-        ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
-        coefs = torch.where(layer_idx < layer_num//2, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1]
+    Gm = Mapping(num_layers=int(math.log(args.img_size,2)-1)*2, mapping_layers=8, latent_size=512, dlatent_size=512, mapping_fmaps=512) #num_layers: 14->256 / 16->512 / 18->1024
+    Gm.load_state_dict(torch.load(model_path+'Gm_dict.pth'))
 
-        Gs.cuda()
-        Gm.eval()
+    Gm.buffer1 = torch.load(model_path+'./center_tensor.pt')
+    const_ = Gs.const
+    const1 = const_.repeat(args.batch_size,1,1,1).cuda()
+    layer_num = int(math.log(args.img_size,2)-1)*2 # 14->256 / 16 -> 512  / 18->1024 
+    layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
+    ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
+    coefs = torch.where(layer_idx < layer_num//2, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1]
 
-        E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+    Gs.to(device)
+    Gm.eval()
 
-    elif type == 2:  # StyleGAN2
-        #model_path = './checkpoint/stylegan_v2/stylegan2_ffhq1024.pth'
-        generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
-        checkpoint = torch.load(model_path) #map_location='cpu'
-        if 'generator_smooth' in checkpoint: #default
-            generator.load_state_dict(checkpoint['generator_smooth'])
-        else:
-            generator.load_state_dict(checkpoint['generator'])
-        synthesis_kwargs = dict(trunc_psi=0.7,trunc_layers=8,randomize_noise=False)
-        #Gs = generator.synthesis
-        #Gs.cuda()
-        #Gm = generator.mapping
-        #truncation = generator.truncation
-        const_r = torch.randn(args.batch_size)
-        const1 = generator.synthesis.early_layer(const_r) #[n,512,4,4]
-
-        #E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
-        E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
-
-    elif type == 3:  # PGGAN
-        #model_path = './checkpoint/PGGAN/pggan_horse256.pth'
-        generator = model_pggan.PGGANGenerator(resolution=args.img_size).to(device)
-        checkpoint = torch.load(model_path) #map_location='cpu'
-        if 'generator_smooth' in checkpoint: #默认是这个
-            generator.load_state_dict(checkpoint['generator_smooth'])
-        else:
-            generator.load_state_dict(checkpoint['generator'])
-        const1 = torch.tensor(0)
-
-        E = BE_PG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
-
-    elif type == 4:
-        #model_path = './checkpoint/biggan/256/G-256.pt'
-        #config_file = './checkpoint/biggan/256/biggan-deep-256-config.json'
-        config = BigGANConfig.from_json_file(config_file)
-        generator = BigGAN(config)
-        generator.load_state_dict(torch.load(model_path))
-
-        E = BE_BIG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
-
-    else:
-        print('error')
-        return
+    E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
 
     if args.checkpoint_dir_E != None:
         E.load_state_dict(torch.load(args.checkpoint_dir_E))
-    E.cuda()
+    E.to(device)
     writer = tensor_writer
 
-    E_optimizer = LREQAdam([{'params': E.parameters()},], lr=args.lr, betas=(args.beta_1, 0.99), weight_decay=0) 
-    loss_lpips = lpips.LPIPS(net='vgg').to('cuda')
+    #E_optimizer = LREQAdam([{'params': E.parameters()},], lr=args.lr, betas=(args.beta_1, 0.99), weight_decay=0) 
+    loss_lpips = lpips.LPIPS(net='vgg').to(device)
 
     batch_size = args.batch_size
     it_d = 0
+
+    img_list = os.listdir(args.img_dir)
+    img_tensor_list = [imgPath2loader(i) for i in img_list]
+    img1 = torch.stack(img_tensor_list, dim = 0)
+
+    const2, w1 = E(img1)
+    w1.requires_grad = True
+    const2.requires_grad = True
+    E_optimizer = LREQAdam([{'W_params': w1, 'C_params': const2},], lr=args.lr, betas=(args.beta_1, 0.99), weight_decay=0) 
+
     for epoch in range(0,args.epoch):
-        set_seed(epoch%30000)
-        z = torch.randn(batch_size, args.z_dim) #[32, 512]
+        with torch.no_grad(): #这里需要生成图片和变量
+            imgs2 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
+        const3, w2 = E(imgs2)
 
-        if type == 1:
-            with torch.no_grad(): #这里需要生成图片和变量
-                w1 = Gm(z,coefs_m=coefs).cuda() #[batch_size,18,512]
-                imgs1 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
-        elif type == 2:
-            with torch.no_grad():
-                #use generator
-                result_all = generator(z.cuda(), **synthesis_kwargs)
-                imgs1 = result_all['image']
-                w1 = result_all['wp']
-
-                ##use Gs and Gm independently
-                # mapping_results = Gm(z)
-                # w = mapping_results['w']
-                # batch_w_avg = w.mean(dim=0)
-                # truncation.w_avg.copy_(truncation.w_avg * 0.995 + batch_w_avg * (1 - 0.995))
-                # new_z = torch.randn_like(z)
-                # new_w = Gm(new_z)['w']
-
-                # if np.random.uniform() < 0.9:
-                #     mixing_cutoff = np.random.randint(1, int(np.log2(args.img_size // 4 * 2)) * 2)
-                #     w = truncation(w)
-                #     new_w = truncation(new_w)
-                #     w[:, :mixing_cutoff] = new_w[:, :mixing_cutoff]
-
-                # w1 = truncation(w,trunc_psi=0.7,trunc_layers=8).cuda()
-                # imgs1 = Gs(w1)['image']
-
-        elif type == 3:
-            with torch.no_grad(): #这里需要生成图片和变量
-                w1 = z.cuda()
-                result_all = generator(w1)
-                imgs1 = result_all['image']
-        elif type == 4:
-            z = truncated_noise_sample(truncation=0.4, batch_size=batch_size, seed=epoch%30000)
-            #label = np.random.randint(1000,size=batch_size) # 生成标签
-            flag = np.random.randint(1000)
-            label = np.ones(batch_size)
-            label = flag * label
-            label = one_hot(label)
-            w1 = torch.tensor(z, dtype=torch.float).cuda()
-            conditions = torch.tensor(label, dtype=torch.float).cuda() # as label
-            truncation = torch.tensor(synthesis_kwargs, dtype=torch.float).cuda()
-            with torch.no_grad(): #这里需要生成图片和变量
-                imgs1, const1 = generator(w1, conditions, truncation) # const1 are conditional vectors in BigGAN
-
-        if type != 4:
-            const2,w2 = E(imgs1)
-        else:
-            const2,w2 = E(imgs1, cond_vector)
-
-        if type == 1:
-            imgs2=Gs.forward(w2,int(math.log(args.img_size,2)-2))
-        elif type == 2 or 3:
-            imgs2=generator.synthesis(w2)['image']
-        elif type == 4:
-            imgs2, _=G(w2, conditions, truncation)
-        else:
-            print('model type error')
-            return
-
-        E_optimizer.zero_grad()
-
-#Image-Vectors 
-
-#loss Images
         loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
         E_optimizer.zero_grad()
         loss_imgs.backward(retain_graph=True)
         E_optimizer.step()
 
-# # Attention region for Aligned Images
-# AT1 = imgs_torch[:,:,:,imgs_torch.shape[3]//8:-imgs_torch.shape[3]//8]
-# torchvision.utils.save_image(AT1,'./img_torch_at1.png')
-
-# AT2 = imgs_torch[:,:,\
-# imgs_torch.shape[2]//8+imgs_torch.shape[2]//32:-imgs_torch.shape[2]//8-imgs_torch.shape[2]//32,\
-# imgs_torch.shape[3]//8+imgs_torch.shape[3]//32:-imgs_torch.shape[3]//8-imgs_torch.shape[3]//32
-# ]
-
-#loss AT1
+        #loss AT1
         imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8].detach().clone()
         imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8].detach().clone()
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
@@ -188,7 +79,7 @@ def train(tensor_writer = None, args = None):
         loss_medium_.backward(retain_graph=True)
         E_optimizer.step()
 
-##loss AT2
+        #loss AT2
         imgs_small_1 = imgs1[:,:,\
         imgs1.shape[2]//8+imgs1.shape[2]//32:-imgs1.shape[2]//8-imgs1.shape[2]//32,\
         imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32].detach().clone()
@@ -203,21 +94,26 @@ def train(tensor_writer = None, args = None):
         loss_small_.backward(retain_graph=True)
         E_optimizer.step()
 
-
-#Latent-Vectors
-
-## w
+        #Latent-Vectors
+        ## w
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
         loss_w_ = loss_w*0.01
         E_optimizer.zero_grad()
         loss_w_.backward(retain_graph=True)
         E_optimizer.step()
 
-## c
-        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-        loss_c_ = loss_c*0.01
+        ## c1
+        loss_c1, loss_c2_info = space_loss(const1,const2,image_space = False)
+        loss_c1_ = loss_c1*0.01
         E_optimizer.zero_grad()
-        loss_c_.backward(retain_graph=True)
+        loss_c1_.backward(retain_graph=True)
+        E_optimizer.step()
+
+        ## c2
+        loss_c2, loss_c2_info = space_loss(const1,const3,image_space = False)
+        loss_c2_ = loss_c2*0.01
+        E_optimizer.zero_grad()
+        loss_c2_.backward(retain_graph=True)
         E_optimizer.step()
 
         print('i_'+str(epoch))
@@ -228,8 +124,8 @@ def train(tensor_writer = None, args = None):
         print('loss_imgs_info: %s'%loss_imgs_info)
         print('---------LatentSpace--------')
         print('loss_w_info: %s'%loss_w_info)
-        print('loss_c_info: %s'%loss_c_info)
-
+        print('loss_c1_info: %s'%loss_c1_info)
+        print('loss_c2_info: %s'%loss_c2_info)
 
         it_d += 1
         writer.add_scalar('loss_small_mse', loss_small_info[0][0], global_step=it_d)
@@ -264,13 +160,21 @@ def train(tensor_writer = None, args = None):
         writer.add_scalar('loss_w_ssim', loss_w_info[3], global_step=it_d)
         writer.add_scalar('loss_w_lpips', loss_w_info[4], global_step=it_d)
 
-        writer.add_scalar('loss_c_mse', loss_c_info[0][0], global_step=it_d)
-        writer.add_scalar('loss_c_mse_mean', loss_c_info[0][1], global_step=it_d)
-        writer.add_scalar('loss_c_mse_std', loss_c_info[0][2], global_step=it_d)
-        writer.add_scalar('loss_c_kl', loss_c_info[1], global_step=it_d)
-        writer.add_scalar('loss_c_cosine', loss_c_info[2], global_step=it_d)
-        writer.add_scalar('loss_c_ssim', loss_c_info[3], global_step=it_d)
-        writer.add_scalar('loss_c_lpips', loss_c_info[4], global_step=it_d)
+        writer.add_scalar('loss_c1_mse', loss_c1_info[0][0], global_step=it_d)
+        writer.add_scalar('loss_c1_mse_mean', loss_c1_info[0][1], global_step=it_d)
+        writer.add_scalar('loss_c1_mse_std', loss_c1_info[0][2], global_step=it_d)
+        writer.add_scalar('loss_c1_kl', loss_c1_info[1], global_step=it_d)
+        writer.add_scalar('loss_c1_cosine', loss_c1_info[2], global_step=it_d)
+        writer.add_scalar('loss_c1_ssim', loss_c1_info[3], global_step=it_d)
+        writer.add_scalar('loss_c1_lpips', loss_c1_info[4], global_step=it_d)
+
+        writer.add_scalar('loss_c2_mse', loss_c2_info[0][0], global_step=it_d)
+        writer.add_scalar('loss_c2_mse_mean', loss_c2_info[0][1], global_step=it_d)
+        writer.add_scalar('loss_c2_mse_std', loss_c2_info[0][2], global_step=it_d)
+        writer.add_scalar('loss_c2_kl', loss_c2_info[1], global_step=it_d)
+        writer.add_scalar('loss_c2_cosine', loss_c2_info[2], global_step=it_d)
+        writer.add_scalar('loss_c2_ssim', loss_c2_info[3], global_step=it_d)
+        writer.add_scalar('loss_c2_lpips', loss_c2_info[4], global_step=it_d)
 
         writer.add_scalars('Image_Space_MSE', {'loss_small_mse':loss_small_info[0][0],'loss_medium_mse':loss_medium_info[0][0],'loss_img_mse':loss_imgs_info[0][0]}, global_step=it_d)
         writer.add_scalars('Image_Space_KL', {'loss_small_kl':loss_small_info[1],'loss_medium_kl':loss_medium_info[1],'loss_imgs_kl':loss_imgs_info[1]}, global_step=it_d)
@@ -294,22 +198,23 @@ def train(tensor_writer = None, args = None):
                 print('loss_imgs_info: %s'%loss_imgs_info,file=f)
                 print('---------LatentSpace--------',file=f)
                 print('loss_w_info: %s'%loss_w_info,file=f)
-                print('loss_c_info: %s'%loss_c_info,file=f)
-            if epoch % 5000 == 0:
-                torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d.pth'%epoch)
-                #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
+                print('loss_c1_info: %s'%loss_c1_info,file=f)
+                print('loss_c2_info: %s'%loss_c2_info,file=f)
+            torch.save(w1)
+            #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epoch', type=int, default=200000)
+    parser.add_argument('--epoch', type=int, default=500)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=5)
-    parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/car/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth
+    parser.add_argument('--experiment_dir', default='./result/StyleGAN1-FFHQ1024-Aligned-realImgEmbedding') #None
+    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/FFHQ/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth
     parser.add_argument('--config_dir', default=None) # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)
+    parser.add_argument('--img_dir', default=None)
     parser.add_argument('--img_size',type=int, default=512)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
@@ -320,7 +225,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN1-car512-Aligned-modelV2"
+        resultPath = "./result/XXX"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

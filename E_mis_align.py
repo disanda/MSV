@@ -198,7 +198,7 @@ def train(tensor_writer = None, args = None):
         mask_2.requires_grad=True
         loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
 
-        loss_mask_ = 7 * loss_mask
+        loss_mask_ = 9 * loss_mask
         E_optimizer.zero_grad()
         loss_mask_.backward(retain_graph=True)
         E_optimizer.step()
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     parser.add_argument('--img_size',type=int, default=512)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128
-    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN00
+    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN00
     parser.add_argument('--start_features', type=int, default=32) # 16->1024 32->512 64->256 
     args = parser.parse_args()
 

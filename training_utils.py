@@ -4,6 +4,13 @@ from scipy.stats import truncnorm
 import metric.pytorch_ssim as pytorch_ssim
 from torch.nn import functional as F
 
+#img_path2tensor
+def imgPath2loader(image_name,size):
+    image = Image.open(image_name).convert('RGB')
+    image = image.resize((size,size))
+    image = loader(image).unsqueeze(0)
+    return image.to(torch.float)
+
 def get_parameter_number(net):
     total_num = sum(p.numel() for p in net.parameters())
     trainable_num = sum(p.numel() for p in net.parameters() if p.requires_grad)
