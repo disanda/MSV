@@ -27,7 +27,6 @@ def train(tensor_writer = None, args = None):
     model_path = args.checkpoint_dir_GAN
     config_path = args.config_dir
     if type == 1: # StyleGAN1
-        #model_path = './checkpoint/cat256/'
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
 
@@ -47,7 +46,6 @@ def train(tensor_writer = None, args = None):
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
 
     elif type == 2:  # StyleGAN2
-        #model_path ='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth'
         generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
         checkpoint = torch.load(model_path) #map_location='cpu'
         if 'generator_smooth' in checkpoint: #default
@@ -63,7 +61,6 @@ def train(tensor_writer = None, args = None):
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
     elif type == 3:  # PGGAN
-        #model_path = './checkpoint/pggan_horse256.pth'
         generator = model_pggan.PGGANGenerator(resolution=args.img_size).to(device)
         checkpoint = torch.load(model_path) #map_location='cpu'
         if 'generator_smooth' in checkpoint: #默认是这个
@@ -74,9 +71,6 @@ def train(tensor_writer = None, args = None):
         E = BE_PG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
 
     elif type == 4:
-
-        #model_path = './checkpoint/biggan/256/G-256.pt' 
-        #config_path = './checkpoint/biggan/256/biggan-deep-256-config.json'
         config = BigGANConfig.from_json_file(config_path)
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(model_path))
@@ -159,61 +153,51 @@ def train(tensor_writer = None, args = None):
         E_optimizer.zero_grad()
 
 #Image Space
-        mask_1 = grad_cam_plus_plus(imgs1.detach().clone(),None) #[c,1,h,w]
-        mask_2 = grad_cam_plus_plus(imgs2.detach().clone(),None)
-        #imgs1.retain_grad()
-        #imgs2.retain_grad()
-        imgs1_ = imgs1.detach().clone()
-        imgs1_.requires_grad = True
-        imgs2_ = imgs2.detach().clone()
-        imgs2_.requires_grad = True
-        grad_1 = gbp(imgs1_) # [n,c,h,w]
-        grad_2 = gbp(imgs2_)
+        mask_1 = grad_cam_plus_plus(imgs1,None) #[c,1,h,w]
+        mask_2 = grad_cam_plus_plus(imgs2,None)
+        # imgs1.retain_grad()
+        # imgs2.retain_grad()
+        # imgs1_ = imgs1.detach().clone()
+        # imgs1_.requires_grad = True
+        # imgs2_ = imgs2.detach().clone()
+        # imgs2_.requires_grad = True
+        grad_1 = gbp(imgs1) # [n,c,h,w]
+        grad_2 = gbp(imgs2)
         heatmap_1,cam_1 = mask2cam(mask_1,imgs1)
         heatmap_2,cam_2 = mask2cam(mask_2,imgs2)
 
         loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips_model=loss_lpips)
 
     ##--Image
-        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
-        E_optimizer.zero_grad()
-        loss_imgs.backward(retain_graph=True)
-        E_optimizer.step()
+        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
 
     ##--Grad_CAM as AT1 (from mask with img)
-        cam_1 = cam_1.cuda().float()
-        cam_1.requires_grad=True
-        cam_2 = cam_2.cuda().float()
-        cam_2.requires_grad=True
+        cam_1 = cam_1.float().to(device)
+        #cam_1.requires_grad=True
+        cam_2 = cam_2.float().to(device)
+        #cam_2.requires_grad=True
         loss_Gcam, loss_Gcam_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
-        loss_Gcam_ = 5 * loss_Gcam
-        E_optimizer.zero_grad()
-        loss_Gcam_.backward(retain_graph=True)
-        E_optimizer.step()
 
     ##--Mask_Cam as AT2 (HeatMap from Mask)
-        mask_1 = mask_1.cuda().float()
-        mask_1.requires_grad=True
-        mask_2 = mask_2.cuda().float()
-        mask_2.requires_grad=True
+        mask_1 = mask_1.float().to(device)
+        #mask_1.requires_grad=True
+        mask_2 = mask_2.float().to(device)
+        #mask_2.requires_grad=True
         loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
 
-        loss_mask_ = 9 * loss_mask
+        loss_msiv = (loss_imgs + loss_Gcam + loss_mask)*100
         E_optimizer.zero_grad()
-        loss_mask_.backward(retain_graph=True)
+        loss_msiv.backward(retain_graph=True)
         E_optimizer.step()
 
 #Latent Space
     ##--C
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-        loss_c_ = loss_c * 0.01
-        E_optimizer.zero_grad()
-        loss_c_.backward(retain_graph=True)
-        E_optimizer.step()
 
     ##--W
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        loss_w_ = loss_w * 0.01
+
+        loss_mslv = loss_c + loss_w
         E_optimizer.zero_grad()
         loss_w_.backward(retain_graph=True)
         E_optimizer.step()
@@ -324,7 +308,7 @@ if __name__ == "__main__":
     parser.add_argument('--experiment_dir', default=None)
     parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/car/')
     parser.add_argument('--config_dir', default=None) # BigGAN needs it
-    parser.add_argument('--checkpoint_dir_E', default='./result/StyleGAN1-car512-Aligned-modelV2/models/E_model_ep100000.pth')
+    parser.add_argument('--checkpoint_dir_E', default=None)#'./result/StyleGAN1-car512-Aligned-modelV2/models/E_model_ep100000.pth'
     parser.add_argument('--img_size',type=int, default=512)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128

@@ -3,12 +3,15 @@ import numpy as np
 from scipy.stats import truncnorm
 import metric.pytorch_ssim as pytorch_ssim
 from torch.nn import functional as F
+from PIL import Image
+import torchvision
 
 #img_path2tensor
+loader = torchvision.transforms.Compose([torchvision.transforms.ToTensor()])
 def imgPath2loader(image_name,size):
     image = Image.open(image_name).convert('RGB')
     image = image.resize((size,size))
-    image = loader(image).unsqueeze(0)
+    image = loader(image)#.unsqueeze(0)
     return image.to(torch.float)
 
 def get_parameter_number(net):

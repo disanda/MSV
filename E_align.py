@@ -164,12 +164,6 @@ def train(tensor_writer = None, args = None):
 
 #Image-Vectors 
 
-#loss Images
-        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
-        E_optimizer.zero_grad()
-        loss_imgs.backward(retain_graph=True)
-        E_optimizer.step()
-
 # # Attention region for Aligned Images
 # AT1 = imgs_torch[:,:,:,imgs_torch.shape[3]//8:-imgs_torch.shape[3]//8]
 # torchvision.utils.save_image(AT1,'./img_torch_at1.png')
@@ -179,28 +173,28 @@ def train(tensor_writer = None, args = None):
 # imgs_torch.shape[3]//8+imgs_torch.shape[3]//32:-imgs_torch.shape[3]//8-imgs_torch.shape[3]//32
 # ]
 
+#loss Images
+        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
+
 #loss AT1
-        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8].detach().clone()
-        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8].detach().clone()
+        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8]
+        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8]
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
-        loss_medium_ = 5 * loss_medium
-        E_optimizer.zero_grad()
-        loss_medium_.backward(retain_graph=True)
-        E_optimizer.step()
 
 ##loss AT2
         imgs_small_1 = imgs1[:,:,\
         imgs1.shape[2]//8+imgs1.shape[2]//32:-imgs1.shape[2]//8-imgs1.shape[2]//32,\
-        imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32].detach().clone()
+        imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32]
 
         imgs_small_2 = imgs2[:,:,\
         imgs2.shape[2]//8+imgs2.shape[2]//32:-imgs2.shape[2]//8-imgs2.shape[2]//32,\
-        imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32].detach().clone()
+        imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32]
 
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
-        loss_small_ = 9 * loss_small
+
+        loss_msiv = (loss_imgs + loss_medium + loss_small)*100
         E_optimizer.zero_grad()
-        loss_small_.backward(retain_graph=True)
+        loss_msiv.backward(retain_graph=True)
         E_optimizer.step()
 
 
@@ -208,16 +202,13 @@ def train(tensor_writer = None, args = None):
 
 ## w
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-        loss_w_ = loss_w*0.01
-        E_optimizer.zero_grad()
-        loss_w_.backward(retain_graph=True)
-        E_optimizer.step()
 
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-        loss_c_ = loss_c*0.01
+
+        loss_mslv = loss_w + loss_c
         E_optimizer.zero_grad()
-        loss_c_.backward(retain_graph=True)
+        loss_mslv.backward()
         E_optimizer.step()
 
         print('i_'+str(epoch))
