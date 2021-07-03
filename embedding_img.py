@@ -90,7 +90,7 @@ def train(tensor_writer = None, args = None):
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
 
         E_optimizer.zero_grad()
-        loss_msiv = (loss_imgs + loss_medium_ + loss_small_)*100
+        loss_msiv = loss_imgs + (loss_medium + loss_small)*0.125
         loss_msiv.backward(retain_graph=True)
         E_optimizer.step()
 
@@ -105,7 +105,7 @@ def train(tensor_writer = None, args = None):
         loss_c2, loss_c2_info = space_loss(const1,const2,image_space = False)
 
         E_optimizer.zero_grad()
-        loss_msLv = loss_w_ + loss_c1_
+        loss_msLv = (loss_w + loss_c1)*0.0125
         loss_msLv.backward() # retain_graph=True
         E_optimizer.step()
 

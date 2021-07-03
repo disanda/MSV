@@ -157,12 +157,12 @@ def train(tensor_writer = None, args = None):
         mask_2 = grad_cam_plus_plus(imgs2,None)
         # imgs1.retain_grad()
         # imgs2.retain_grad()
-        # imgs1_ = imgs1.detach().clone()
-        # imgs1_.requires_grad = True
-        # imgs2_ = imgs2.detach().clone()
-        # imgs2_.requires_grad = True
-        grad_1 = gbp(imgs1) # [n,c,h,w]
-        grad_2 = gbp(imgs2)
+        imgs1_ = imgs1.detach().clone()
+        imgs1_.requires_grad = True
+        imgs2_ = imgs2.detach().clone()
+        imgs2_.requires_grad = True
+        grad_1 = gbp(imgs1_) # [n,c,h,w]
+        grad_2 = gbp(imgs2_)
         heatmap_1,cam_1 = mask2cam(mask_1,imgs1)
         heatmap_2,cam_2 = mask2cam(mask_2,imgs2)
 
@@ -185,7 +185,7 @@ def train(tensor_writer = None, args = None):
         #mask_2.requires_grad=True
         loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
 
-        loss_msiv = (loss_imgs + loss_Gcam + loss_mask)*100
+        loss_msiv = loss_imgs + (loss_Gcam + loss_mask)*0.125
         E_optimizer.zero_grad()
         loss_msiv.backward(retain_graph=True)
         E_optimizer.step()
@@ -197,9 +197,9 @@ def train(tensor_writer = None, args = None):
     ##--W
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
 
-        loss_mslv = loss_c + loss_w
+        loss_mslv = (loss_c + loss_w)*0.0125
         E_optimizer.zero_grad()
-        loss_w_.backward(retain_graph=True)
+        loss_w.backward(retain_graph=True)
         E_optimizer.step()
 
         print('i_'+str(epoch))
@@ -319,7 +319,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN1-car512-GradCAM-modelV2-goOnw-align100,000"
+        resultPath = "./result/StyleGAN1-car512-GradCAM-modelV2-goOnw-align100,000/models/E_model_ep145000.pth"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
