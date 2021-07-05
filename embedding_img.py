@@ -2,7 +2,7 @@ import os
 import math
 import torch
 import torchvision
-import model.E.E_EAE as BE
+import model.E.E_Previous as BE
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips

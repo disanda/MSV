@@ -304,22 +304,22 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=5)
+    parser.add_argument('--batch_size', type=int, default=12)
     parser.add_argument('--experiment_dir', default=None)
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/car/')
+    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v2/stylegan2_cat256.pth')
     parser.add_argument('--config_dir', default=None) # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)#'./result/StyleGAN1-car512-Aligned-modelV2/models/E_model_ep100000.pth'
-    parser.add_argument('--img_size',type=int, default=512)
+    parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128
-    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN00
-    parser.add_argument('--start_features', type=int, default=32) # 16->1024 32->512 64->256 
+    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN00
+    parser.add_argument('--start_features', type=int, default=64) # 16->1024 32->512 64->256 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN1-car512-GradCAM-modelV2-goOnw-align100,000/models/E_model_ep145000.pth"
+        resultPath = "./result/StyleGAN2-cat256-MisAligned-modelV2"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
