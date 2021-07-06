@@ -152,45 +152,7 @@ def train(tensor_writer = None, args = None):
         
         E_optimizer.zero_grad()
 
-#Image Space
-        mask_1 = grad_cam_plus_plus(imgs1,None) #[c,1,h,w]
-        mask_2 = grad_cam_plus_plus(imgs2,None)
-        # imgs1.retain_grad()
-        # imgs2.retain_grad()
-        imgs1_ = imgs1.detach().clone()
-        imgs1_.requires_grad = True
-        imgs2_ = imgs2.detach().clone()
-        imgs2_.requires_grad = True
-        grad_1 = gbp(imgs1_) # [n,c,h,w]
-        grad_2 = gbp(imgs2_)
-        heatmap_1,cam_1 = mask2cam(mask_1,imgs1)
-        heatmap_2,cam_2 = mask2cam(mask_2,imgs2)
-
-        loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips_model=loss_lpips)
-
-    ##--Image
-        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
-
-    ##--Grad_CAM as AT1 (from mask with img)
-        cam_1 = cam_1.float().to(device)
-        #cam_1.requires_grad=True
-        cam_2 = cam_2.float().to(device)
-        #cam_2.requires_grad=True
-        loss_Gcam, loss_Gcam_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
-
-    ##--Mask_Cam as AT2 (HeatMap from Mask)
-        mask_1 = mask_1.float().to(device)
-        #mask_1.requires_grad=True
-        mask_2 = mask_2.float().to(device)
-        #mask_2.requires_grad=True
-        loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
-
-        loss_msiv = loss_imgs + (loss_Gcam + loss_mask)*0.125
-        E_optimizer.zero_grad()
-        loss_msiv.backward(retain_graph=True)
-        E_optimizer.step()
-
-#Latent Space
+#Latent Vectors
     ##--C
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
 
@@ -200,6 +162,44 @@ def train(tensor_writer = None, args = None):
         loss_mslv = (loss_c + loss_w)*0.0125
         E_optimizer.zero_grad()
         loss_w.backward(retain_graph=True)
+        E_optimizer.step()
+
+#Image Vectors
+        mask_1 = grad_cam_plus_plus(imgs1.detach().clone(),None) #[c,1,h,w]
+        mask_2 = grad_cam_plus_plus(imgs2.detach().clone(),None)
+        # imgs1.retain_grad()
+        # imgs2.retain_grad()
+        imgs1_ = imgs1.detach().clone()
+        imgs1_.requires_grad = True
+        imgs2_ = imgs2.detach().clone()
+        imgs2_.requires_grad = True
+        grad_1 = gbp(imgs1_) # [n,c,h,w]
+        grad_2 = gbp(imgs2_)
+        heatmap_1,cam_1 = mask2cam(mask_1.detach().clone(),imgs1.detach().clone())
+        heatmap_2,cam_2 = mask2cam(mask_2.detach().clone(),imgs2.detach().clone())
+
+        loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips_model=loss_lpips)
+
+    ##--Image
+        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
+
+    ##--Mask_Cam as AT1 (HeatMap from Mask)
+        mask_1 = mask_1.float().to(device)
+        mask_1.requires_grad=True
+        mask_2 = mask_2.float().to(device)
+        mask_2.requires_grad=True
+        loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
+
+    ##--Grad_CAM as AT2 (from mask with img)
+        cam_1 = cam_1.float().to(device)
+        cam_1.requires_grad=True
+        cam_2 = cam_2.float().to(device)
+        cam_2.requires_grad=True
+        loss_Gcam, loss_Gcam_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
+
+        loss_msiv = loss_imgs + (loss_Gcam + loss_mask)*0.125
+        E_optimizer.zero_grad()
+        loss_msiv.backward()
         E_optimizer.step()
 
         print('i_'+str(epoch))
@@ -319,7 +319,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-cat256-MisAligned-modelV2"
+        resultPath = "./result/StyleGAN2-cat256-MisAligned-modelV2-detach&cloneMSV"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

@@ -162,6 +162,19 @@ def train(tensor_writer = None, args = None):
 
         E_optimizer.zero_grad()
 
+#Latent-Vectors
+
+## w
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+
+## c
+        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+
+        loss_mslv = (loss_w + loss_c)*0.01
+        E_optimizer.zero_grad()
+        loss_mslv.backward()
+        E_optimizer.step()
+
 #Image-Vectors 
 
 # # Attention region for Aligned Images
@@ -177,39 +190,28 @@ def train(tensor_writer = None, args = None):
         loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
 
 #loss AT1
-        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8]
-        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8]
+        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8].detach().clone()
+        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8].detach().clone()
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
 
-##loss AT2
+#loss AT2
         imgs_small_1 = imgs1[:,:,\
         imgs1.shape[2]//8+imgs1.shape[2]//32:-imgs1.shape[2]//8-imgs1.shape[2]//32,\
-        imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32]
+        imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32].detach().clone()
 
         imgs_small_2 = imgs2[:,:,\
         imgs2.shape[2]//8+imgs2.shape[2]//32:-imgs2.shape[2]//8-imgs2.shape[2]//32,\
-        imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32]
+        imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32].detach().clone()
 
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
 
-        loss_msiv = loss_imgs + (loss_medium + loss_small)*0.125
+        loss_msiv = loss_imgs + (loss_medium + loss_small)*0.1
         E_optimizer.zero_grad()
         loss_msiv.backward(retain_graph=True)
         E_optimizer.step()
 
 
-#Latent-Vectors
 
-## w
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-
-## c
-        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-
-        loss_mslv = (loss_w + loss_c)*0.0125
-        E_optimizer.zero_grad()
-        loss_mslv.backward()
-        E_optimizer.step()
 
         print('i_'+str(epoch))
         print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]')
