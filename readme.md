@@ -1,12 +1,23 @@
 
 
-# MSV: Multi-Scale Vectors for Image Embedding with Latent Representation
+# MTV: Multi-Type Vectors for Image Embedding with Latent Representation
 
 ![Python 3.6.9](https://img.shields.io/badge/python-3.6.9-blue.svg?style=plastic)
 ![PyTorch 1.5.1](https://img.shields.io/badge/pytorch-1.5.1-blue.svg?style=plastic) 
 ![Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-green.svg?style=plastic)
 
->This is the official code release for MSV: Multi-Scale Vectors for Image Embedding with Latent Representation. The code contains a set of encoders for matching  pre-trained GANs (PGGAN, StyleGANv1, StyleGANv2, BigGAN)  via multi-scale vectors.
+<center class="half">
+<img src="./images/cxx1.gif" width = "128" height = "128" alt="cxx1" align=center />
+<img src="./images/cxx2.gif" width = "128" height = "128" alt="cxx1" align=center />
+<img src="./images/msk.gif" width = "128" height = "128" alt="cxx1" align=center />
+<img src="./images/dy.gif" width = "128" height = "128" alt="cxx1" align=center />
+<img src="./images/zy.gif" width = "128" height = "128" alt="cxx1" align=center />
+</center>
+
+
+
+
+>This is the official code release for MtV: Multi-Type Vectors for Image Embedding with Latent Representation. The code contains a set of encoders for matching  pre-trained GANs (PGGAN, StyleGANv1, StyleGANv2, BigGAN)  via multi-scale vectors.
 
 ## Setup
 

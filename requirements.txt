@@ -1,0 +1,17 @@
+#sh
+
+#pip install belows:
+
+torch==1.5.1
+
+torchvision
+
+tensorboardx
+
+lpips
+
+boto3
+
+
+
+

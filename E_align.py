@@ -2,7 +2,9 @@ import os
 import math
 import torch
 import torchvision
-import model.E.E_v2 as BE
+import model.E.E as BE
+import model.E.E_PG as PG_BE
+import model.E.E_BIG as Big_BE
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips
@@ -210,9 +212,6 @@ def train(tensor_writer = None, args = None):
         loss_msiv.backward(retain_graph=True)
         E_optimizer.step()
 
-
-
-
         print('i_'+str(epoch))
         print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]')
         print('---------ImageSpace--------')
@@ -298,14 +297,14 @@ if __name__ == "__main__":
     parser.add_argument('--epoch', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=12)
+    parser.add_argument('--batch_size', type=int, default=5)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v2/stylegan2_cat256.pth') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth
-    parser.add_argument('--config_dir', default=None) # BigGAN needs it
+    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/biggan/256/G-256.pt') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth
+    parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)
     parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
-    parser.add_argument('--z_dim', type=int, default=512)
+    parser.add_argument('--z_dim', type=int, default=128) # PGGAN , StyleGANs are 512. BIGGAN is 128
     parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
     parser.add_argument('--start_features', type=int, default=64)  # 16->1024 32->512 64->256
     args = parser.parse_args()
@@ -313,7 +312,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-cat256-Aligned-modelV2"
+        resultPath = "./result/BigGAN-256-Alighed-FronterIN"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
