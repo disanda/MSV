@@ -152,6 +152,9 @@ def train(tensor_writer = None, args = None, imgs_tensor = None):
                 for i,j in enumerate(imgs2):
                     torch.save(j.unsqueeze(0),resultPath1_2+'/id%d-i%d-img%d.pt'%(g,i,epoch))
                      #torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d.pth'%epoch)
+
+        torchvision.utils.save_image(imgs2*0.5+0.5,writer_path+'/%s_rec.png'%str(g).rjust(5,'0'))
+
         w_all.append(w1[0])
         w_all_tensor = torch.stack(w_all, dim=0)
         torch.save(w_all_tensor, resultPath1_2+'w_all_%d.pt'%g)
@@ -169,10 +172,10 @@ if __name__ == "__main__":
     parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--experiment_dir', default='./result/StyleGAN1-FFHQ1024-Aligned-realImgEmbedding-w30-freashE-rl0.01') #None
+    parser.add_argument('--experiment_dir', default='./result/StyleGAN1-FFHQ1024-Aligned-realImgEmbedding-30t124') #None
     parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/ffhq1024/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth
     parser.add_argument('--config_dir', default=None) # BigGAN needs it
-    parser.add_argument('--checkpoint_dir_E', default='./checkpoint/E/styleGANv1_EAE_ep115000.pth')
+    parser.add_argument('--checkpoint_dir_E', default='./checkpoint/E/styleGANv1_EAE_ep65000.pth')
     parser.add_argument('--img_dir', default='./checkpoint/real-30-1024.pt') # pt or directory
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
@@ -204,7 +207,7 @@ if __name__ == "__main__":
     if os.path.isdir(args.img_dir): # img_file
         img_list = os.listdir(args.img_dir)
         img_tensor_list = [imgPath2loader(args.img_dir+i,size=args.img_size) for i in img_list]
-        imgs1 = torch.stack(img_tensor_list, dim = 0)[:args.batch_size].to(device)
+        imgs1 = torch.stack(img_tensor_list, dim = 0).to(device)
     else: # pt
         imgs1 = torch.load(args.img_dir)
     imgs1 = imgs1*2-1 # [0,1]->[-1,1]

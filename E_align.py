@@ -3,8 +3,8 @@ import math
 import torch
 import torchvision
 import model.E.E as BE
-import model.E.E_PG as PG_BE
-import model.E.E_BIG as Big_BE
+import model.E.E_PG as BE_PG
+import model.E.E_BIG as BE_BIG
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips
@@ -15,13 +15,13 @@ from model.stylegan1.net import Generator, Mapping #StyleGANv1
 import model.stylegan2_generator as model_v2 #StyleGANv2
 import model.pggan.pggan_generator as model_pggan #PGGAN
 from model.biggan_generator import BigGAN #BigGAN
+from model.utils.biggan_config import BigGANConfig
 from training_utils import *
 
 def train(tensor_writer = None, args = None):
     type = args.mtype
 
     model_path = args.checkpoint_dir_GAN
-    config_path = args.config_dir
     if type == 1: # StyleGAN1
         #model_path = './checkpoint/stylegan_v1/ffhq1024/'
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
@@ -77,8 +77,8 @@ def train(tensor_writer = None, args = None):
     elif type == 4:
         #model_path = './checkpoint/biggan/256/G-256.pt'
         #config_file = './checkpoint/biggan/256/biggan-deep-256-config.json'
-        config = BigGANConfig.from_json_file(config_file)
-        generator = BigGAN(config)
+        config = BigGANConfig.from_json_file(args.config_dir)
+        generator = BigGAN(config).to(device)
         generator.load_state_dict(torch.load(model_path))
 
         E = BE_BIG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
@@ -143,21 +143,21 @@ def train(tensor_writer = None, args = None):
             label = one_hot(label)
             w1 = torch.tensor(z, dtype=torch.float).cuda()
             conditions = torch.tensor(label, dtype=torch.float).cuda() # as label
-            truncation = torch.tensor(synthesis_kwargs, dtype=torch.float).cuda()
+            truncation = torch.tensor(0.4, dtype=torch.float).cuda()
             with torch.no_grad(): #这里需要生成图片和变量
                 imgs1, const1 = generator(w1, conditions, truncation) # const1 are conditional vectors in BigGAN
 
         if type != 4:
             const2,w2 = E(imgs1)
         else:
-            const2,w2 = E(imgs1, cond_vector)
+            const2,w2 = E(imgs1, const1)
 
         if type == 1:
-            imgs2=Gs.forward(w2,int(math.log(args.img_size,2)-2))
-        elif type == 2 or 3:
-            imgs2=generator.synthesis(w2)['image']
+            imgs2 = Gs.forward(w2,int(math.log(args.img_size,2)-2))
+        elif type == 2 or type == 3:
+            imgs2 = generator.synthesis(w2)['image']
         elif type == 4:
-            imgs2, _=G(w2, conditions, truncation)
+            imgs2, _ = generator(w2, conditions, truncation)
         else:
             print('model type error')
             return
@@ -305,7 +305,7 @@ if __name__ == "__main__":
     parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=128) # PGGAN , StyleGANs are 512. BIGGAN is 128
-    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--mtype', type=int, default=4) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
     parser.add_argument('--start_features', type=int, default=64)  # 16->1024 32->512 64->256
     args = parser.parse_args()
 

@@ -1,5 +1,3 @@
-#sh
-
 #pip install belows:
 
 torch==1.5.1
@@ -11,6 +9,8 @@ tensorboardx
 lpips
 
 boto3
+
+skimage
 
 
 

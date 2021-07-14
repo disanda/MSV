@@ -27,7 +27,6 @@ def train(tensor_writer = None, args = None):
     type = args.mtype
 
     model_path = args.checkpoint_dir_GAN
-    config_path = args.config_dir
     if type == 1: # StyleGAN1
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
@@ -73,10 +72,10 @@ def train(tensor_writer = None, args = None):
         E = BE_PG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
 
     elif type == 4:
-        config = BigGANConfig.from_json_file(config_path)
-        generator = BigGAN(config)
+        config = BigGANConfig.from_json_file(args.config_dir)
+        generator = BigGAN(config).to(device)
         generator.load_state_dict(torch.load(model_path))
-        generator.cuda()
+        
         E = BE_BIG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
 
     else:
