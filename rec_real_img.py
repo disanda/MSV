@@ -1,3 +1,4 @@
+#reconstructing real_image by dirrectlly MTV E (no optimize)
 import os
 import math
 import torch
@@ -13,6 +14,8 @@ import model.pggan.pggan_generator as model_pggan #PGGAN
 from model.biggan_generator import BigGAN #BigGAN
 
 if __name__ == "__main__":
+
+    if not os.path.exists('./image'): os.mkdir('./image')
 
     parser = argparse.ArgumentParser(description='the training args')
     parser.add_argument('--batch_size', type=int, default=2)
@@ -31,12 +34,10 @@ if __name__ == "__main__":
     use_gpu = True
     device = torch.device("cuda" if use_gpu else "cpu")
 
-    if not os.path.exists('./result'): os.mkdir('./result')
-
-    resultPath1_1 = resultPath+"/imgs"
+    resultPath1_1 = "./image/imgs"
     if not os.path.exists(resultPath1_1): os.mkdir(resultPath1_1)
 
-    resultPath1_2 = resultPath+"/rec"
+    resultPath1_2 = "./image/rec"
     if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
 #Load GANs
