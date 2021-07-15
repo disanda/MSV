@@ -1,3 +1,6 @@
+# The file optimize E for embedding real-img to latent space W.
+# You should set img_dir in args. Support img-file or img-tensor (W) dirrectlly
+# one interation just optimize one img, you can run the file on multiple command-line.
 import os
 import math
 import torch
@@ -77,7 +80,7 @@ def train(tensor_writer = None, args = None, imgs_tensor = None):
         else:
             E.load_state_dict(new_state_dict) # if not this reload, the max num of optimizing images is about 5-6.
             E_optimizer.state = collections.defaultdict(dict) # Fresh the optimizer state. E_optimizer = LREQAdam([{'params': E.parameters()},], lr=args.lr, betas=(args.beta_1, 0.99), weight_decay=0) 
-        for epoch in range(0,args.epoch):
+        for iteration in range(0,args.iterations):
             if args.optimizeE == True:
                 const2, w1 = E(imgs1)
             imgs2 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
@@ -120,7 +123,7 @@ def train(tensor_writer = None, args = None, imgs_tensor = None):
             loss_msiv.backward()
             E_optimizer.step()
 
-            print('id_'+str(g)+'_____i_'+str(epoch))
+            print('id_'+str(g)+'_____i_'+str(iteration))
             print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]')
             print('---------ImageSpace--------')
             print('loss_small_info: %s'%loss_small_info)
@@ -132,12 +135,12 @@ def train(tensor_writer = None, args = None, imgs_tensor = None):
             print('loss_c2_info: %s'%loss_c2_info)
 
             it_d += 1
-            if epoch % 100 == 0:
+            if iteration % 100 == 0:
                 n_row = batch_size
                 test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
-                torchvision.utils.save_image(test_img, resultPath1_1+'/id%d_ep%d.jpg'%(g,epoch),nrow=n_row) # nrow=3
+                torchvision.utils.save_image(test_img, resultPath1_1+'/id%d_ep%d.jpg'%(g,iteration),nrow=n_row) # nrow=3
                 with open(resultPath+'/Loss.txt', 'a+') as f:
-                    print('id_'+str(g)+'_____i_'+str(epoch),file=f)
+                    print('id_'+str(g)+'_____i_'+str(iteration),file=f)
                     print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]',file=f)
                     print('---------ImageSpace--------',file=f)
                     print('loss_small_info: %s'%loss_small_info,file=f)
@@ -148,35 +151,32 @@ def train(tensor_writer = None, args = None, imgs_tensor = None):
                     print('loss_c1_info: %s'%loss_c1_info,file=f)
                     print('loss_c2_info: %s'%loss_c2_info,file=f)
                 for i,j in enumerate(w1):
-                    torch.save(j.unsqueeze(0),resultPath1_2+'/id%d-i%d-w%d.pt'%(g,i,epoch))
+                    torch.save(j.unsqueeze(0),resultPath1_2+'/id%d-i%d-w%d.pt'%(g,i,iteration))
                 for i,j in enumerate(imgs2):
-                    torch.save(j.unsqueeze(0),resultPath1_2+'/id%d-i%d-img%d.pt'%(g,i,epoch))
-                     #torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d.pth'%epoch)
+                    torch.save(j.unsqueeze(0),resultPath1_2+'/id%d-i%d-img%d.pt'%(g,i,iteration))
+                    #torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d.pth'%iteration)
 
         torchvision.utils.save_image(imgs2*0.5+0.5,writer_path+'/%s_rec.png'%str(g).rjust(5,'0'))
-
         w_all.append(w1[0])
-        w_all_tensor = torch.stack(w_all, dim=0)
-        torch.save(w_all_tensor, resultPath1_2+'w_all_%d.pt'%g)
-
         img_all.append(imgs2[0])
-        img_all_tensor = torch.stack(img_all, dim=0)
-        torch.save(img_all_tensor, resultPath1_2+'img_all_%d.pt'%g)
 
-
+    w_all_tensor = torch.stack(w_all, dim=0)
+    img_all_tensor = torch.stack(img_all, dim=0)
+    torch.save(w_all_tensor, resultPath1_2+'/w_all_%d.pt'%g)
+    torch.save(img_all_tensor, resultPath1_2+'/img_all_%d.pt'%g)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epoch', type=int, default=1500)
+    parser.add_argument('--iterations', type=int, default=1500)
     parser.add_argument('--lr', type=float, default=0.01)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=1)
-    parser.add_argument('--experiment_dir', default='./result/StyleGAN1-FFHQ1024-Aligned-realImgEmbedding-30t124') #None
+    parser.add_argument('--experiment_dir', default='./result/StyleGAN1-FFHQ1024-Aligned-realImgEmbedding') #None
     parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/ffhq1024/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth
     parser.add_argument('--config_dir', default=None) # BigGAN needs it
-    parser.add_argument('--checkpoint_dir_E', default='./checkpoint/E/styleGANv1_EAE_ep65000.pth')
-    parser.add_argument('--img_dir', default='./checkpoint/real-30-1024.pt') # pt or directory
+    parser.add_argument('--checkpoint_dir_E', default='./checkpoint/E/E_styleganv1.pth')
+    parser.add_argument('--img_dir', default='./checkpoint/realimg_file/') # pt or directory
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
@@ -206,6 +206,7 @@ if __name__ == "__main__":
 
     if os.path.isdir(args.img_dir): # img_file
         img_list = os.listdir(args.img_dir)
+        img_list.sort()
         img_tensor_list = [imgPath2loader(args.img_dir+i,size=args.img_size) for i in img_list]
         imgs1 = torch.stack(img_tensor_list, dim = 0).to(device)
     else: # pt

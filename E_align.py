@@ -97,8 +97,8 @@ def train(tensor_writer = None, args = None):
 
     batch_size = args.batch_size
     it_d = 0
-    for epoch in range(0,args.epoch):
-        set_seed(epoch%30000)
+    for iteration in range(0,args.iterations):
+        set_seed(iteration%30000)
         z = torch.randn(batch_size, args.z_dim) #[32, 512]
 
         if type == 1:
@@ -135,7 +135,7 @@ def train(tensor_writer = None, args = None):
                 result_all = generator(w1)
                 imgs1 = result_all['image']
         elif type == 4:
-            z = truncated_noise_sample(truncation=0.4, batch_size=batch_size, seed=epoch%30000)
+            z = truncated_noise_sample(truncation=0.4, batch_size=batch_size, seed=iteration%30000)
             #label = np.random.randint(1000,size=batch_size) # 生成标签
             flag = np.random.randint(1000)
             label = np.ones(batch_size)
@@ -212,7 +212,7 @@ def train(tensor_writer = None, args = None):
         loss_msiv.backward(retain_graph=True)
         E_optimizer.step()
 
-        print('i_'+str(epoch))
+        print('i_'+str(iteration))
         print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]')
         print('---------ImageSpace--------')
         print('loss_small_info: %s'%loss_small_info)
@@ -273,12 +273,12 @@ def train(tensor_writer = None, args = None):
         writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_c_info[1],'loss_c_cosine':loss_c_info[2]}, global_step=it_d)
 
 
-        if epoch % 100 == 0:
+        if iteration % 100 == 0:
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
-            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(epoch),nrow=n_row) # nrow=3
+            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(iteration),nrow=n_row) # nrow=3
             with open(resultPath+'/Loss.txt', 'a+') as f:
-                print('i_'+str(epoch),file=f)
+                print('i_'+str(iteration),file=f)
                 print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]',file=f)
                 print('---------ImageSpace--------',file=f)
                 print('loss_small_info: %s'%loss_small_info,file=f)
@@ -287,14 +287,14 @@ def train(tensor_writer = None, args = None):
                 print('---------LatentSpace--------',file=f)
                 print('loss_w_info: %s'%loss_w_info,file=f)
                 print('loss_c_info: %s'%loss_c_info,file=f)
-            if epoch % 5000 == 0:
-                torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d.pth'%epoch)
-                #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
+            if iteration % 5000 == 0:
+                torch.save(E.state_dict(), resultPath1_2+'/E_model_iter%d.pth'%iteration)
+                #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_iter%d.pt'%iteration)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epoch', type=int, default=200000)
+    parser.add_argument('--iterations', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=5)

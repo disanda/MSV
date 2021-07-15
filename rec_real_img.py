@@ -4,7 +4,7 @@ import torch
 import argparse
 import numpy as np
 import torchvision
-import model.E.E_v2 as BE
+import model.E.E_Previous as BE
 from collections import OrderedDict
 from training_utils import *
 from model.stylegan1.net import Generator, Mapping #StyleGANv1
@@ -17,43 +17,34 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='the training args')
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir_gan', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth')
-    parser.add_argument('--checkpoint_dir_e', default='./checkpoint/E/E_styleGANv2_modelv2_ep110000.pth') #None
+    parser.add_argument('--checkpoint_dir_gan', default='./checkpoint/stylegan_v1/ffhq1024/') # stylegan_v2/stylegan2_ffhq1024.pth 
+    parser.add_argument('--checkpoint_dir_e', default='./checkpoint/E/E_styleganv1.pth') #None or E_ffhq_styleganv2_modelv2_ep110000.pth E_ffhq_styleganv2_modelv1_ep85000.pth
     parser.add_argument('--config_dir', default=None)
+    parser.add_argument('--realimg_dir', default='./images/real_images128/')
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
-    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--mtype', type=int, default=1) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
     parser.add_argument('--start_features', type=int, default=16)
-    parser.add_argument('--seed', type=int, default=10600) 
     args = parser.parse_args()
 
     use_gpu = True
     device = torch.device("cuda" if use_gpu else "cpu")
 
-    # if not os.path.exists('./result'): os.mkdir('./result')
-    # resultPath = args.experiment_dir
-    # if resultPath == None:
-    #     resultPath = "./result/StyleGAN1-FFHQ1024-Aligned-Img-LossRate"
-    #     if not os.path.exists(resultPath): os.mkdir(resultPath)
+    if not os.path.exists('./result'): os.mkdir('./result')
 
-    # resultPath1_1 = resultPath+"/imgs"
-    # if not os.path.exists(resultPath1_1): os.mkdir(resultPath1_1)
+    resultPath1_1 = resultPath+"/imgs"
+    if not os.path.exists(resultPath1_1): os.mkdir(resultPath1_1)
 
-    # resultPath1_2 = resultPath+"/models"
-    # if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
-
-    # writer_path = os.path.join(resultPath, './summaries')
-    # if not os.path.exists(writer_path): os.mkdir(writer_path)
-    # writer = tensorboardX.SummaryWriter(writer_path)
-
+    resultPath1_2 = resultPath+"/rec"
+    if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
 #Load GANs
     type = args.mtype
     model_path = args.checkpoint_dir_gan
     config_path = args.config_dir
 
-    if type == 1: # StyleGAN1
+    if type == 1: # StyleGAN1, 1 diretory contains 3files(Gm, Gs, center-tensor)
         #model_path = './checkpoint/stylegan_v1/ffhq1024/'
         Gs = Generator(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         Gs.load_state_dict(torch.load(model_path+'Gs_dict.pth'))
@@ -74,7 +65,7 @@ if __name__ == "__main__":
 
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
 
-    elif type == 2:  # StyleGAN2
+    elif type == 2:  # StyleGAN2, a pth file.
         #model_path = './checkpoint/stylegan_v2/stylegan2_ffhq1024.pth'
         generator = model_v2.StyleGAN2Generator(resolution=args.img_size).to(device)
         checkpoint = torch.load(model_path) #map_location='cpu'
@@ -93,7 +84,7 @@ if __name__ == "__main__":
         #E = BE.BE(startf=64, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
-    elif type == 3:  # PGGAN
+    elif type == 3:  # PGGAN, a pth file.
         #model_path = './checkpoint/PGGAN/pggan_horse256.pth'
         generator = model_pggan.PGGANGenerator(resolution=args.img_size).to(device)
         checkpoint = torch.load(model_path) #map_location='cpu'
@@ -105,84 +96,72 @@ if __name__ == "__main__":
 
         E = BE_PG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, pggan=True)
 
-    elif type == 4:
+    elif type == 4: # BigGAN, 2 files. G.pt and config.json
         #model_path = './checkpoint/biggan/256/G-256.pt'
         #config_file = './checkpoint/biggan/256/biggan-deep-256-config.json'
         config = BigGANConfig.from_json_file(config_file)
         generator = BigGAN(config)
         generator.load_state_dict(torch.load(model_path))
-
         E = BE_BIG.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3, biggan=True)
-
     else:
         print('error')
 
 #Load E
     E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) .to(device)
-    E.load_state_dict(torch.load(args.checkpoint_dir_e, map_location=torch.device(device)))
-
-    # # omit RGB layers EAEv2->MSVv2:
-    #E_dict = torch.load(args.checkpoint_dir_e,map_location=torch.device(device))
-    # new_state_dict = OrderedDict()
-    # for (i1,j1),(i2,j2) in zip (E.state_dict().items(),E_dict.items()):
-    #         new_state_dict[i1] = j2 
-    # E.load_state_dict(new_state_dict)
-
-
-    ## EAEv2 -> MSVv3
-    # E_dict = torch.load('./checkpoint/E_model_ep115000.pth',map_location=torch.device(device))
-    # new_state_dict = OrderedDict()
-    # new_state_dict2 = OrderedDict()
-    # for (i2,j2) in E_dict.items():
-    #         if 'blur' in i2:
-    #             #print(i2)
-    #             pass
-    #         else:
-    #             new_state_dict[i2]=j2
-    # rgb_w = new_state_dict['FromRGB.0.from_rgb.weight']
-    # rgb_b = new_state_dict['FromRGB.0.from_rgb.bias']
-    # for i1,j1 in new_state_dict.items():
-    #     if 'RGB' in i1:
-    #         pass
-    #     else:
-    #         new_state_dict2[i1] = j1
-    # new_state_dict2['FromRGB.from_rgb.weight'] = rgb_w
-    # new_state_dict2['FromRGB.from_rgb.bias'] = rgb_b
-    # #print(len(E.state_dict().keys()))
-    # #print(len(E_dict.keys()))
-    # #print(len(new_state_dict.keys()))
-    # E.load_state_dict(new_state_dict2)
+    if args.checkpoint_dir_e is not None:
+        E.load_state_dict(torch.load(args.checkpoint_dir_e, map_location=torch.device(device)))
 
     set_seed(args.seed)
     z = torch.randn(args.batch_size, args.z_dim) #[32, 512]
 
     type = args.mtype
-    if type == 1:
-        with torch.no_grad(): #这里需要生成图片和变量
-            w1 = Gm(z,coefs_m=coefs).to(device) #[batch_size,18,512]
-            imgs1 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
-    elif type == 2:
-        with torch.no_grad():
-            #use generator
-            result_all = generator(z.to(device), **synthesis_kwargs)
-            imgs1 = result_all['image']
-            w1 = result_all['wp']
-
-    if type != 4:
-        const2,w2 = E(imgs1)
-    else:
-        const2,w2 = E(imgs1, cond_vector)
 
 
-    if type == 1:
-        imgs2=Gs.forward(w2,int(math.log(args.img_size,2)-2))
-    elif type == 2 or 3:
-        imgs2=generator.synthesis(w2)['image']
-    elif type == 4:
-        imgs2, _=G(w2, conditions, truncation)
-    else:
-        print('model type error')
+    save_path = args.realimg_dir
+    imgs_path = [os.path.join(save_path, f) for f in os.listdir(save_path) if f.endswith(".png") or f.endswith(".jpg")]
+    img_size = args.img_size
 
-    n_row = args.batch_size
-    test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
-    torchvision.utils.save_image(test_img, './ep%d.jpg'%(args.seed),nrow=n_row) # nrow=3
+    #PIL 2 Tensor
+    transform = torchvision.transforms.Compose([
+            #torchvision.transforms.CenterCrop(160),
+            torchvision.transforms.Resize((img_size,img_size)),
+            torchvision.transforms.ToTensor(),
+            #torchvision.transforms.Normalize(mean=(0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5))
+        ])
+
+    images = []
+    for idx, image_path in enumerate(imgs_path):
+        img = Image.open(image_path).convert("RGB")
+        img = transform(img)
+        images.append(img)
+
+    imgs_tensor = torch.stack(images, dim=0)
+
+    for i, j  in enumerate(imgs_tensor):
+        imgs1 = j.unsqueeze(0).cuda() * 2 -1
+        if type != 4:
+            const2,w2 = E(imgs1)
+        else:
+            const2,w2 = E(imgs1, cond_vector)
+
+        if type == 1:
+            imgs2=Gs.forward(w2,int(math.log(args.img_size,2)-2))
+        elif type == 2 or type == 3:
+            imgs2=generator.synthesis(w2)['image']
+        elif type == 4:
+            imgs2, _=G(w2, conditions, truncation)
+        else:
+            print('model type error')
+
+    # n_row = args.batch_size
+    # test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
+    # torchvision.utils.save_image(test_img, './v2ep%d.jpg'%(args.seed),nrow=n_row) # nrow=3
+        torchvision.utils.save_image(imgs1*0.5+0.5, resultPath1_1+'/%s_realimg.png'%str(i).rjust(5,'0'))
+        torchvision.utils.save_image(imgs2*0.5+0.5, resultPath1_2+'/%s_mtv_rec.png'%str(i).rjust(5,'0'))
+
+
+
+
+
+
+

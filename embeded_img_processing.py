@@ -15,20 +15,12 @@ direction = 'eyeglasses' #smile, eyeglasses, pose, age, gender
 direction_path = './latentvectors/directions/stylegan_ffhq_%s_w_boundary.npy'%direction
 w_path = './latentvectors/faces/i3_cxx2.pt'
 
-#Loading Pre-trained Model
+#Loading Pre-trained Model, Directions
 Gs = Generator(startf=16, maxf=512, layer_count=int(math.log(img_size,2)-1), latent_size=512, channels=3)
 Gs.load_state_dict(torch.load(GAN_path+'Gs_dict.pth', map_location=device))
 
-# E = BE.BE()
-# E.load_state_dict(torch.load('./checkpoint/E/styleGANv1_EAE_ep115000.pth',map_location=torch.device('cpu')))
-
-# # omit RGB layers EAEv2->MSVv2:
-# if args.checkpoint_dir_E != None:
-#     E_dict = torch.load(args.checkpoint_dir_E,map_location=torch.device(device))
-#     new_state_dict = OrderedDict()
-#     for (i1,j1),(i2,j2) in zip (E.state_dict().items(),E_dict.items()):
-#             new_state_dict[i1] = j2 
-#     E.load_state_dict(new_state_dict)
+E = BE.BE()
+E.load_state_dict(torch.load('./checkpoint/E/styleganv1.pth',map_location=torch.device('cpu')))
 
 direction = np.load(direction_path) #[[1, 512] interfaceGAN
 direction = torch.tensor(direction).float()

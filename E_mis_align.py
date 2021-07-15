@@ -105,8 +105,8 @@ def train(tensor_writer = None, args = None):
 
 
     it_d = 0
-    for epoch in range(0,args.epoch):
-        set_seed(epoch%30000)
+    for iteration in range(0,args.iterations):
+        set_seed(iteration%30000)
         z = torch.randn(batch_size, args.z_dim) #[32, 512]
 
         if type == 1:
@@ -124,7 +124,7 @@ def train(tensor_writer = None, args = None):
                 result_all = generator(w1)
                 imgs1 = result_all['image']
         elif type == 4:
-            z = truncated_noise_sample(truncation=0.4, batch_size=batch_size, seed=epoch%30000)
+            z = truncated_noise_sample(truncation=0.4, batch_size=batch_size, seed=iteration%30000)
             #label = np.random.randint(1000,size=batch_size) # 生成标签
             flag = np.random.randint(1000)
             label = np.ones(batch_size)
@@ -203,7 +203,7 @@ def train(tensor_writer = None, args = None):
         loss_msiv.backward()
         E_optimizer.step()
 
-        print('i_'+str(epoch))
+        print('i_'+str(iteration))
         print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_ssim, loss_imgs_cosine, loss_kl_imgs, loss_imgs_lpips]')
         print('---------ImageSpace--------')
         print('loss_mask_info: %s'%loss_mask_info)
@@ -271,21 +271,21 @@ def train(tensor_writer = None, args = None):
         writer.add_scalars('Latent Space W', {'loss_w_mse':loss_w_info[0][0],'loss_w_mse_mean':loss_w_info[0][1],'loss_w_mse_std':loss_w_info[0][2],'loss_w_kl':loss_w_info[1],'loss_w_cosine':loss_w_info[2]}, global_step=it_d)
         writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_w_info[1],'loss_c_cosine':loss_w_info[2]}, global_step=it_d)
 
-        if epoch % 100 == 0:
+        if iteration % 100 == 0:
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
-            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.png'%(epoch),nrow=n_row) # nrow=3
+            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.png'%(iteration),nrow=n_row) # nrow=3
             heatmap=torch.cat((heatmap_1,heatmap_2))
             cam=torch.cat((cam_1,cam_2))
             grads = torch.cat((grad_1,grad_2))
             grads = grads.data.cpu().numpy() # [n,c,h,w]
             grads -= np.max(np.min(grads), 0)
             grads /= np.max(grads)
-            torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'/heatmap_%d.png'%(epoch),nrow=n_row)
-            torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'/cam_%d.png'%(epoch),nrow=n_row)
-            torchvision.utils.save_image(torch.tensor(grads),resultPath_grad_cam+'/gb_%d.png'%(epoch),nrow=n_row)
+            torchvision.utils.save_image(torch.tensor(heatmap),resultPath_grad_cam+'/heatmap_%d.png'%(iteration),nrow=n_row)
+            torchvision.utils.save_image(torch.tensor(cam),resultPath_grad_cam+'/cam_%d.png'%(iteration),nrow=n_row)
+            torchvision.utils.save_image(torch.tensor(grads),resultPath_grad_cam+'/gb_%d.png'%(iteration),nrow=n_row)
             with open(resultPath+'/Loss.txt', 'a+') as f:
-                print('i_'+str(epoch),file=f)
+                print('i_'+str(iteration),file=f)
                 print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]',file=f)
                 print('---------ImageSpace--------',file=f)
                 print('loss_mask_info: %s'%loss_mask_info,file=f)
@@ -295,21 +295,21 @@ def train(tensor_writer = None, args = None):
                 print('---------LatentSpace--------',file=f)
                 print('loss_w_info: %s'%loss_w_info,file=f)
                 print('loss_c_info: %s'%loss_c_info,file=f)
-            if epoch % 5000 == 0:
-                torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d.pth'%epoch)
-                #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_ep%d.pt'%epoch)
+            if iteration % 5000 == 0:
+                torch.save(E.state_dict(), resultPath1_2+'/E_model_iter%d.pth'%iteration)
+                #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_iter%d.pt'%iteration)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--epoch', type=int, default=200000)
+    parser.add_argument('--iterations', type=int, default=200000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=5)
     parser.add_argument('--experiment_dir', default=None)
     parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/biggan/256/G-256.pt')
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
-    parser.add_argument('--checkpoint_dir_E', default=None)#'./result/StyleGAN1-car512-Aligned-modelV2/models/E_model_ep100000.pth'
+    parser.add_argument('--checkpoint_dir_E', default=None)#'./result/StyleGAN1-car512-Aligned-modelV2/models/E_model_iter100000.pth'
     parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=128) # BigGAN,z=128
