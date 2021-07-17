@@ -174,7 +174,7 @@ def train(tensor_writer = None, args = None):
 
         loss_mslv = (loss_w + loss_c)*0.01
         E_optimizer.zero_grad()
-        loss_mslv.backward()
+        loss_mslv.backward(retain_graph=True)
         E_optimizer.step()
 
 #Image-Vectors 
@@ -210,7 +210,7 @@ def train(tensor_writer = None, args = None):
         #loss_msiv = loss_imgs + (loss_medium + loss_small)*0.1  # Case 1
         loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small # Case2, loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small
         E_optimizer.zero_grad()
-        loss_msiv.backward(retain_graph=True)
+        loss_msiv.backward()
         E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
