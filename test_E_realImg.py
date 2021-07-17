@@ -1,4 +1,3 @@
-#reconstructing real_image by dirrectlly MTV E (no optimize)
 import os
 import math
 import torch
@@ -15,15 +14,12 @@ from model.biggan_generator import BigGAN #BigGAN
 
 if __name__ == "__main__":
 
-    if not os.path.exists('./images'): os.mkdir('./images')
-
     parser = argparse.ArgumentParser(description='the training args')
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--experiment_dir', default=None) #None
     parser.add_argument('--checkpoint_dir_gan', default='./checkpoint/stylegan_v1/ffhq1024/') # stylegan_v2/stylegan2_ffhq1024.pth 
-    parser.add_argument('--checkpoint_dir_e', default='./checkpoint/E/E_styleganv1_state_dict.pth') #None or E_ffhq_styleganv2_modelv2_ep110000.pth E_ffhq_styleganv2_modelv1_ep85000.pth
+    parser.add_argument('--checkpoint_dir_e', default='./checkpoint/E/styleGANv1_EAE_ep65000.pth') #None or E_ffhq_styleganv2_modelv2_ep110000.pth E_ffhq_styleganv2_modelv1_ep85000.pth
     parser.add_argument('--config_dir', default=None)
-    parser.add_argument('--realimg_dir', default='./images/real_images128/')
     parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512)
@@ -33,12 +29,6 @@ if __name__ == "__main__":
 
     use_gpu = True
     device = torch.device("cuda" if use_gpu else "cpu")
-
-    resultPath1_1 = "./images/imgs"
-    if not os.path.exists(resultPath1_1): os.mkdir(resultPath1_1)
-
-    resultPath1_2 = "./images/rec"
-    if not os.path.exists(resultPath1_2): os.mkdir(resultPath1_2)
 
 #Load GANs
     type = args.mtype
@@ -109,13 +99,35 @@ if __name__ == "__main__":
 
 #Load E
     E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) .to(device)
-    if args.checkpoint_dir_e is not None:
-        E.load_state_dict(torch.load(args.checkpoint_dir_e, map_location=torch.device(device)))
+    #E.load_state_dict(torch.load(args.checkpoint_dir_e, map_location=torch.device(device)))
+    # omit RGB layers EAEv2->MSVv2:
+    if args.checkpoint_dir_e != None:
+        E_dict = torch.load(args.checkpoint_dir_e,map_location=torch.device(device))
+        new_state_dict = OrderedDict()
+        for (i1,j1),(i2,j2) in zip (E.state_dict().items(),E_dict.items()):
+                new_state_dict[i1] = j2 
+        E.load_state_dict(new_state_dict)
+
+
+    set_seed(args.seed)
+    z = torch.randn(args.batch_size, args.z_dim) #[32, 512]
 
     type = args.mtype
-    save_path = args.realimg_dir
-    imgs_path = [os.path.join(save_path, f) for f in os.listdir(save_path) if f.endswith(".png") or f.endswith(".jpg")]
-    img_size = args.img_size
+    # if type == 1:
+    #     with torch.no_grad(): #这里需要生成图片和变量
+    #         w1 = Gm(z,coefs_m=coefs).to(device) #[batch_size,18,512]
+    #         imgs1 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
+    # elif type == 2:
+    #     with torch.no_grad():
+    #         #use generator
+    #         result_all = generator(z.to(device), **synthesis_kwargs)
+    #         imgs1 = result_all['image']
+    #         w1 = result_all['wp']
+
+    #os.listdir('C:/Users/Administrator/Desktop/TIP-Images/test_imgs')
+    save_path = 'C:/Users/Administrator/Desktop/TIP-Images/test_imgs/'
+    imgs_path = [os.path.join(save_path, f) for f in os.listdir(save_path) if f.endswith(".png")]
+    img_size = 1024
 
     #PIL 2 Tensor
     transform = torchvision.transforms.Compose([
@@ -140,6 +152,7 @@ if __name__ == "__main__":
         else:
             const2,w2 = E(imgs1, cond_vector)
 
+
         if type == 1:
             imgs2=Gs.forward(w2,int(math.log(args.img_size,2)-2))
         elif type == 2 or type == 3:
@@ -152,13 +165,5 @@ if __name__ == "__main__":
     # n_row = args.batch_size
     # test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
     # torchvision.utils.save_image(test_img, './v2ep%d.jpg'%(args.seed),nrow=n_row) # nrow=3
-        torchvision.utils.save_image(imgs1*0.5+0.5, resultPath1_1+'/%s_realimg.png'%str(i).rjust(5,'0'))
-        torchvision.utils.save_image(imgs2*0.5+0.5, resultPath1_2+'/%s_mtv_rec.png'%str(i).rjust(5,'0'))
-        print('doing:'+str(i).rjust(5,'0'))
-
-
-
-
-
-
-
+        torchvision.utils.save_image(imgs1*0.5+0.5, './img%d.png'%i)
+        torchvision.utils.save_image(imgs2*0.5+0.5, './%s_imgrc_v2.png'%str(i).rjust(3,'0'))

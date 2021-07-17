@@ -203,7 +203,7 @@ def train(tensor_writer = None, args = None):
         loss_msiv.backward()
         E_optimizer.step()
 
-        print('i_'+str(iteration))
+        print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
         print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_ssim, loss_imgs_cosine, loss_kl_imgs, loss_imgs_lpips]')
         print('---------ImageSpace--------')
         print('loss_mask_info: %s'%loss_mask_info)
@@ -274,7 +274,7 @@ def train(tensor_writer = None, args = None):
         if iteration % 100 == 0:
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
-            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.png'%(iteration),nrow=n_row) # nrow=3
+            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d_iter%d.png'%(iteration//30000,iteration%30000),nrow=n_row) # nrow=3
             heatmap=torch.cat((heatmap_1,heatmap_2))
             cam=torch.cat((cam_1,cam_2))
             grads = torch.cat((grad_1,grad_2))
@@ -296,7 +296,7 @@ def train(tensor_writer = None, args = None):
                 print('loss_w_info: %s'%loss_w_info,file=f)
                 print('loss_c_info: %s'%loss_c_info,file=f)
             if iteration % 5000 == 0:
-                torch.save(E.state_dict(), resultPath1_2+'/E_model_iter%d.pth'%iteration)
+                torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d_iter%d.pth'%(iteration//30000,iteration%30000))
                 #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_iter%d.pt'%iteration)
 
 if __name__ == "__main__":

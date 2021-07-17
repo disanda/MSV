@@ -207,12 +207,13 @@ def train(tensor_writer = None, args = None):
 
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
 
-        loss_msiv = loss_imgs + (loss_medium + loss_small)*0.1
+        #loss_msiv = loss_imgs + (loss_medium + loss_small)*0.1  # Case 1
+        loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small # Case2, loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small
         E_optimizer.zero_grad()
         loss_msiv.backward(retain_graph=True)
         E_optimizer.step()
 
-        print('i_'+str(iteration))
+        print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
         print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]')
         print('---------ImageSpace--------')
         print('loss_small_info: %s'%loss_small_info)
@@ -276,7 +277,7 @@ def train(tensor_writer = None, args = None):
         if iteration % 100 == 0:
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
-            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d.jpg'%(iteration),nrow=n_row) # nrow=3
+            torchvision.utils.save_image(test_img, resultPath1_1+'/ep%d_iter%d.jpg'%(iteration//30000,iteration%30000),nrow=n_row) # nrow=3
             with open(resultPath+'/Loss.txt', 'a+') as f:
                 print('i_'+str(iteration),file=f)
                 print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]',file=f)
@@ -288,31 +289,31 @@ def train(tensor_writer = None, args = None):
                 print('loss_w_info: %s'%loss_w_info,file=f)
                 print('loss_c_info: %s'%loss_c_info,file=f)
             if iteration % 5000 == 0:
-                torch.save(E.state_dict(), resultPath1_2+'/E_model_iter%d.pth'%iteration)
+                torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d_iter%d.pth'%(iteration//30000,iteration%30000))
                 #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_iter%d.pt'%iteration)
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--iterations', type=int, default=200000)
+    parser.add_argument('--iterations', type=int, default=210000) # epoch = iterations//30000
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=5)
+    parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/biggan/256/G-256.pt') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth
+    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)
-    parser.add_argument('--img_size',type=int, default=256)
+    parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
-    parser.add_argument('--z_dim', type=int, default=128) # PGGAN , StyleGANs are 512. BIGGAN is 128
-    parser.add_argument('--mtype', type=int, default=4) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
-    parser.add_argument('--start_features', type=int, default=64)  # 16->1024 32->512 64->256
+    parser.add_argument('--z_dim', type=int, default=512) # PGGAN , StyleGANs are 512. BIGGAN is 128
+    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
+    parser.add_argument('--start_features', type=int, default=16)  # 16->1024 32->512 64->256
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/BigGAN-256-Alighed-FronterIN"
+        resultPath = "./result/StyleGANv2-Alighed-Case2"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
