@@ -1,3 +1,5 @@
+import sys
+sys.path.append("..")
 import os
 import math
 import torch
@@ -11,8 +13,7 @@ import tensorboardX
 import argparse
 from model.stylegan1.net import Generator, Mapping #StyleGANv1
 from training_utils import *
-import sys
-sys.path.append("..")
+
 
 def train(tensor_writer = None, args = None):
     type = args.mtype
@@ -113,8 +114,6 @@ def train(tensor_writer = None, args = None):
         writer.add_scalar('loss_w_ssim', loss_w_info[3], global_step=it_d)
         writer.add_scalar('loss_w_lpips', loss_w_info[4], global_step=it_d)
 
-        writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_c_info[1],'loss_c_cosine':loss_c_info[2]}, global_step=it_d)
-
         if iteration % 100 == 0:
             n_row = batch_size
             test_img = torch.cat((imgs1[:n_row],imgs2[:n_row]))*0.5+0.5
@@ -133,12 +132,12 @@ def train(tensor_writer = None, args = None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--iterations', type=int, default=210000) # epoch = iterations//30000
+    parser.add_argument('--iterations', type=int, default=60001) # epoch = iterations//30000
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/ffhq1024/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
+    parser.add_argument('--checkpoint_dir_GAN', default='../checkpoint/stylegan_v1/ffhq1024/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)
     parser.add_argument('--img_size',type=int, default=1024)

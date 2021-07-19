@@ -1,8 +1,12 @@
+import sys
+sys.path.append("..")
 import os
 import math
 import torch
 import torchvision
-import model.E.Ablation_Study.E_Blur_W as BE
+import model.E.E_Blur as BE
+import model.E.E_PG as BE_PG
+import model.E.E_BIG as BE_BIG
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips
@@ -10,9 +14,11 @@ import numpy as np
 import tensorboardX
 import argparse
 from model.stylegan1.net import Generator, Mapping #StyleGANv1
+import model.stylegan2_generator as model_v2 #StyleGANv2
+import model.pggan.pggan_generator as model_pggan #PGGAN
+from model.biggan_generator import BigGAN #BigGAN
+from model.utils.biggan_config import BigGANConfig
 from training_utils import *
-import sys
-sys.path.append("..")
 
 def train(tensor_writer = None, args = None):
     type = args.mtype
@@ -38,6 +44,7 @@ def train(tensor_writer = None, args = None):
         Gm.eval()
 
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
+
     else:
         print('error')
         return
@@ -74,9 +81,9 @@ def train(tensor_writer = None, args = None):
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
 
 ## c
-        #loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
 
-        loss_mslv = loss_w * 0.01
+        loss_mslv = (loss_w + loss_c)*0.01
         E_optimizer.zero_grad()
         loss_mslv.backward(retain_graph=True)
         E_optimizer.step()
@@ -84,7 +91,7 @@ def train(tensor_writer = None, args = None):
 #loss Images
         loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
 
-        loss_msiv = loss_imgs
+        loss_msiv = loss_imgs # Case2, loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small
         E_optimizer.zero_grad()
         loss_msiv.backward()
         E_optimizer.step()
@@ -95,8 +102,11 @@ def train(tensor_writer = None, args = None):
         print('loss_imgs_info: %s'%loss_imgs_info)
         print('---------LatentSpace--------')
         print('loss_w_info: %s'%loss_w_info)
+        print('loss_c_info: %s'%loss_c_info)
+
 
         it_d += 1
+
         writer.add_scalar('loss_imgs_mse', loss_imgs_info[0][0], global_step=it_d)
         writer.add_scalar('loss_imgs_mse_mean', loss_imgs_info[0][1], global_step=it_d)
         writer.add_scalar('loss_imgs_mse_std', loss_imgs_info[0][2], global_step=it_d)
@@ -113,7 +123,17 @@ def train(tensor_writer = None, args = None):
         writer.add_scalar('loss_w_ssim', loss_w_info[3], global_step=it_d)
         writer.add_scalar('loss_w_lpips', loss_w_info[4], global_step=it_d)
 
+        writer.add_scalar('loss_c_mse', loss_c_info[0][0], global_step=it_d)
+        writer.add_scalar('loss_c_mse_mean', loss_c_info[0][1], global_step=it_d)
+        writer.add_scalar('loss_c_mse_std', loss_c_info[0][2], global_step=it_d)
+        writer.add_scalar('loss_c_kl', loss_c_info[1], global_step=it_d)
+        writer.add_scalar('loss_c_cosine', loss_c_info[2], global_step=it_d)
+        writer.add_scalar('loss_c_ssim', loss_c_info[3], global_step=it_d)
+        writer.add_scalar('loss_c_lpips', loss_c_info[4], global_step=it_d)
+
+        writer.add_scalars('Latent Space W', {'loss_w_mse':loss_w_info[0][0],'loss_w_mse_mean':loss_w_info[0][1],'loss_w_mse_std':loss_w_info[0][2],'loss_w_kl':loss_w_info[1],'loss_w_cosine':loss_w_info[2]}, global_step=it_d)
         writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_c_info[1],'loss_c_cosine':loss_c_info[2]}, global_step=it_d)
+
 
         if iteration % 100 == 0:
             n_row = batch_size
@@ -125,6 +145,7 @@ def train(tensor_writer = None, args = None):
                 print('---------ImageSpace--------',file=f)
                 print('loss_imgs_info: %s'%loss_imgs_info,file=f)
                 print('---------LatentSpace--------',file=f)
+                print('loss_w_info: %s'%loss_w_info,file=f)
                 print('loss_c_info: %s'%loss_c_info,file=f)
             if iteration % 5000 == 0:
                 torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d_iter%d.pth'%(iteration//30000,iteration%30000))
@@ -133,12 +154,12 @@ def train(tensor_writer = None, args = None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--iterations', type=int, default=210000) # epoch = iterations//30000
+    parser.add_argument('--iterations', type=int, default=60001) # epoch = iterations//30000
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v1/ffhq1024/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
+    parser.add_argument('--checkpoint_dir_GAN', default='../checkpoint/stylegan_v1/ffhq1024/') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)
     parser.add_argument('--img_size',type=int, default=1024)
@@ -151,7 +172,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGANv1-AlationStudy-w"
+        resultPath = "./result/StyleGANv1-AlationStudy-x"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"
