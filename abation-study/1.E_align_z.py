@@ -33,11 +33,10 @@ def train(tensor_writer = None, args = None):
         layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
         ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
         coefs = torch.where(layer_idx < layer_num//2, 0.7 * ones, ones) # 18个变量前8个裁剪比例truncation_psi [0.7,0.7,...,1,1,1]
-        coefs.cuda()
+        coefs = coefs.cuda()
 
         Gs.cuda()
         Gm.cuda()
-        Gm.eval()
 
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3)
 
@@ -57,7 +56,7 @@ def train(tensor_writer = None, args = None):
     it_d = 0
     for iteration in range(0,args.iterations):
         set_seed(iteration%30000)
-        z_c1 = torch.randn(batch_size, args.z_dim) #[n, 512]
+        z_c1 = torch.randn(batch_size, args.z_dim).cuda() #[n, 512]
 
         if type == 1:
             with torch.no_grad(): #这里需要生成图片和变量
@@ -65,7 +64,8 @@ def train(tensor_writer = None, args = None):
                 imgs1 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
             z_c2, _ = E(imgs1)
             z_c2 = z_c2.squeeze(-1).squeeze(-1)
-            w2 = Gm(z_c2,coefs_m=coefs)
+            with torch.no_grad():
+                w2 = Gm(z_c2,coefs_m=coefs)
             imgs2 = Gs.forward(w2,int(math.log(args.img_size,2)-2))
         else:
             print('model type error')
@@ -86,7 +86,7 @@ def train(tensor_writer = None, args = None):
         E_optimizer.step()
 
 #loss Images
-        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
+        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
 
         loss_msiv = loss_imgs
         E_optimizer.zero_grad()
