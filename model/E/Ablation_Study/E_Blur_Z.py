@@ -82,7 +82,7 @@ class BEBlock(nn.Module):
             residual = self.conv_3(residual)
 
         x = 0.111*x+0.889*residual #降低x的比例，可以将const的loss缩小！！0.7*residual： 10-11 >> 7 同时 c_s的loss扩大至3， ws的抖动提前, 效果更好
-        return x, w1, w2
+        return x
 
 
 class BE(nn.Module):
@@ -125,7 +125,7 @@ class BE(nn.Module):
         #print(x.shape)
         w = torch.tensor(0)
         for i in range(9-block_num,self.layer_count):
-            x,w1,w2 = self.decode_block[i](x)
+            x = self.decode_block[i](x)
             #print(x.shape)
             # w_ = torch.cat((w2.view(x.shape[0],1,512),w1.view(x.shape[0],1,512)),dim=1) # [b,2,512]
             # if i == (9-block_num):
