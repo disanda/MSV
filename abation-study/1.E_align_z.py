@@ -61,13 +61,7 @@ def train(tensor_writer = None, args = None):
             with torch.no_grad(): #这里需要生成图片和变量
                 w1 = Gm(z_c1,coefs_m=coefs).cuda() #[batch_size,18,512]
                 imgs1 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
-        else:
-            print('error')
-            return
-
-        z_c2, _ = E(imgs1, const1)
-
-        if type == 1:
+            z_c2, _ = E(imgs1)
             w2 = Gm(z_c2,coefs_m=coefs).cuda()
             imgs2 = Gs.forward(w2,int(math.log(args.img_size,2)-2))
         else:
