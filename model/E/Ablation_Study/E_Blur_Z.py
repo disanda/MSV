@@ -133,5 +133,5 @@ class BE(nn.Module):
             # else:
             #     w = torch.cat((w_,w),dim=1)
             # #print(w.shape)
-        z = out_z(x)
+        z = self.out_z(x)
         return z, w
