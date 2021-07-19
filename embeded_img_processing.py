@@ -3,7 +3,7 @@ import numpy as np
 import math
 import torch
 import torchvision
-import model.E.E_Previous as BE
+import model.E.E_Blur as BE
 from model.stylegan1.net import Generator, Mapping #StyleGANv1
 
 #Params

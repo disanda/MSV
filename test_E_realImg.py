@@ -4,7 +4,7 @@ import torch
 import argparse
 import numpy as np
 import torchvision
-import model.E.E_Previous as BE
+import model.E.E_Blur as BE
 from collections import OrderedDict
 from training_utils import *
 from model.stylegan1.net import Generator, Mapping #StyleGANv1
