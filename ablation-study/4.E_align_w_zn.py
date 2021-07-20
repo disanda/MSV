@@ -113,7 +113,7 @@ def train(tensor_writer = None, args = None):
         writer.add_scalar('loss_w_ssim', loss_w_info[3], global_step=it_d)
         writer.add_scalar('loss_w_lpips', loss_w_info[4], global_step=it_d)
 
-        writer.add_scalars('Latent Space C', {'loss_c_mse':loss_c_info[0][0],'loss_c_mse_mean':loss_c_info[0][1],'loss_c_mse_std':loss_c_info[0][2],'loss_c_kl':loss_c_info[1],'loss_c_cosine':loss_c_info[2]}, global_step=it_d)
+        writer.add_scalars('Latent Space W', {'loss_w_mse':loss_w_info[0][0],'loss_w_mse_mean':loss_w_info[0][1],'loss_w_mse_std':loss_w_info[0][2],'loss_w_kl':loss_w_info[1],'loss_w_cosine':loss_w_info[2]}, global_step=it_d)
 
         if iteration % 100 == 0:
             n_row = batch_size
@@ -125,7 +125,7 @@ def train(tensor_writer = None, args = None):
                 print('---------ImageSpace--------',file=f)
                 print('loss_imgs_info: %s'%loss_imgs_info,file=f)
                 print('---------LatentSpace--------',file=f)
-                print('loss_c_info: %s'%loss_c_info,file=f)
+                print('loss_w_info: %s'%loss_w_info,file=f)
             if iteration % 5000 == 0:
                 torch.save(E.state_dict(), resultPath1_2+'/E_model_ep%d_iter%d.pth'%(iteration//30000,iteration%30000))
                 #torch.save(Gm.buffer1,resultPath1_2+'/center_tensor_iter%d.pt'%iteration)
