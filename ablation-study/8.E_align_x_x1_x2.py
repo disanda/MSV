@@ -12,10 +12,6 @@ import numpy as np
 import tensorboardX
 import argparse
 from model.stylegan1.net import Generator, Mapping #StyleGANv1
-import model.stylegan2_generator as model_v2 #StyleGANv2
-import model.pggan.pggan_generator as model_pggan #PGGAN
-from model.biggan_generator import BigGAN #BigGAN
-from model.utils.biggan_config import BigGANConfig
 from training_utils import *
 
 def train(tensor_writer = None, args = None):
@@ -32,7 +28,7 @@ def train(tensor_writer = None, args = None):
 
         Gm.buffer1 = torch.load(model_path+'./center_tensor.pt')
         const_ = Gs.const
-        const1 = const_.repeat(args.batch_size,1,1,1).detach().cuda()
+        const1 = const_.repeat(args.batch_size,1,1,1).detach().clone().cuda()
         layer_num = int(math.log(args.img_size,2)-1)*2 # 14->256 / 16 -> 512  / 18->1024 
         layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
         ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
