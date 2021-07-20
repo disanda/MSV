@@ -89,7 +89,7 @@ def train(tensor_writer = None, args = None):
         E_optimizer.step()
 
 #loss Images
-        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
+        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
 
         loss_msiv = loss_imgs
         E_optimizer.zero_grad()

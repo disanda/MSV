@@ -87,11 +87,11 @@ def train(tensor_writer = None, args = None):
         E_optimizer.step()
 
 #loss Images
-        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
+        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
 
 #loss AT1
-        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8].detach().clone()
-        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8].detach().clone()
+        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8]
+        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8]
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
 
         #loss_msiv = loss_imgs + (loss_medium + loss_small)*0.1  # Case 1
