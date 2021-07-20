@@ -1,6 +1,8 @@
 #pip install belows:
 
-torch==1.5.1
+python==3.7.3
+
+torch>=1.8
 
 torchvision
 
@@ -11,6 +13,14 @@ lpips
 boto3
 
 skimage
+
+matplotlib
+
+scipy
+
+tqdm
+
+requests
 
 
 
