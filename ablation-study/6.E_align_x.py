@@ -5,8 +5,6 @@ import math
 import torch
 import torchvision
 import model.E.E_Blur as BE
-import model.E.E_PG as BE_PG
-import model.E.E_BIG as BE_BIG
 from model.utils.custom_adam import LREQAdam
 import metric.pytorch_ssim as pytorch_ssim
 import lpips
@@ -71,6 +69,14 @@ def train(tensor_writer = None, args = None):
 
         E_optimizer.zero_grad()
 
+#loss Images
+        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
+
+        loss_msiv = loss_imgs # Case2, loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small
+        E_optimizer.zero_grad()
+        loss_msiv.backward(retain_graph=True)
+        E_optimizer.step()
+
 #Latent-Vectors
 
 ## w
@@ -81,15 +87,7 @@ def train(tensor_writer = None, args = None):
 
         loss_mslv = (loss_w + loss_c)*0.01
         E_optimizer.zero_grad()
-        loss_mslv.backward(retain_graph=True)
-        E_optimizer.step()
-
-#loss Images
-        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
-
-        loss_msiv = loss_imgs # Case2, loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small
-        E_optimizer.zero_grad()
-        loss_msiv.backward()
+        loss_mslv.backward()
         E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))

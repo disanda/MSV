@@ -85,6 +85,32 @@ def train(tensor_writer = None, args = None, imgs_tensor = None):
                 const2, w1 = E(imgs1)
             imgs2 = Gs.forward(w1,int(math.log(args.img_size,2)-2)) # 7->512 / 6->256
             const3, w2 = E(imgs2)
+
+            ##Image Vectors
+            #Image
+            loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
+
+            #loss AT1
+            imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8]
+            imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8]
+            loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
+
+            #loss AT2
+            imgs_small_1 = imgs1[:,:,\
+            imgs1.shape[2]//8+imgs1.shape[2]//32:-imgs1.shape[2]//8-imgs1.shape[2]//32,\
+            imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32]
+            imgs_small_2 = imgs2[:,:,\
+            imgs2.shape[2]//8+imgs2.shape[2]//32:-imgs2.shape[2]//8-imgs2.shape[2]//32,\
+            imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32]
+
+            loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
+
+            E_optimizer.zero_grad()
+            loss_msiv = loss_imgs + (loss_medium + loss_small)*0.125
+            loss_msiv.backward(retain_graph=True)
+            E_optimizer.step()
+
+
             ##Latent-Vectors
             ## w
             loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
@@ -96,31 +122,8 @@ def train(tensor_writer = None, args = None, imgs_tensor = None):
             loss_c2, loss_c2_info = space_loss(const1,const2,image_space = False)
 
             E_optimizer.zero_grad()
-            loss_msLv = (loss_w + loss_c1)*0.0125
-            loss_msLv.backward(retain_graph=True) # retain_graph=True
-            E_optimizer.step()
-
-            loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
-
-            #loss AT1
-            imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8].detach().clone()
-            imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8].detach().clone()
-            loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
-
-            #loss AT2
-            imgs_small_1 = imgs1[:,:,\
-            imgs1.shape[2]//8+imgs1.shape[2]//32:-imgs1.shape[2]//8-imgs1.shape[2]//32,\
-            imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32].detach().clone()
-
-            imgs_small_2 = imgs2[:,:,\
-            imgs2.shape[2]//8+imgs2.shape[2]//32:-imgs2.shape[2]//8-imgs2.shape[2]//32,\
-            imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32].detach().clone()
-
-            loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
-
-            E_optimizer.zero_grad()
-            loss_msiv = loss_imgs + (loss_medium + loss_small)*0.125
-            loss_msiv.backward()
+            loss_msLv = (loss_w + loss_c1)*0.01
+            loss_msLv.backward() # retain_graph=True
             E_optimizer.step()
 
             print('id_'+str(g)+'_____i_'+str(iteration))

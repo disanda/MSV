@@ -36,7 +36,7 @@ def train(tensor_writer = None, args = None):
 
         Gm.buffer1 = torch.load(model_path+'/center_tensor.pt')
         const_ = Gs.const
-        const1 = const_.repeat(args.batch_size,1,1,1).cuda()
+        const1 = const_.repeat(args.batch_size,1,1,1).detach().clone().cuda()
         layer_num = int(math.log(args.img_size,2)-1)*2 # 14->256 / 16 -> 512  / 18->1024 
         layer_idx = torch.arange(layer_num)[np.newaxis, :, np.newaxis] # shape:[1,18,1], layer_idx = [0,1,2,3,4,5,6。。。，17]
         ones = torch.ones(layer_idx.shape, dtype=torch.float32) # shape:[1,18,1], ones = [1,1,1,1,1,1,1,1]
@@ -57,7 +57,7 @@ def train(tensor_writer = None, args = None):
         #Gs = generator.synthesis
         #Gm = generator.mapping
         const_r = torch.randn(args.batch_size)
-        const1 = generator.synthesis.early_layer(const_r) #[n,512,4,4]
+        const1 = generator.synthesis.early_layer(const_r).detach().clone() #[n,512,4,4]
         #E = BE.BE(startf=64, maxf=512, layer_count=7, latent_size=512, channels=3) # 256
         E = BE.BE(startf=args.start_features, maxf=512, layer_count=int(math.log(args.img_size,2)-1), latent_size=512, channels=3) # layer_count: 7->256 8->512 9->1024
 
@@ -153,21 +153,9 @@ def train(tensor_writer = None, args = None):
         
         E_optimizer.zero_grad()
 
-#Latent Vectors
-    ##--C
-        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-
-    ##--W
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-
-        loss_mslv = (loss_c + loss_w)*0.0125
-        E_optimizer.zero_grad()
-        loss_w.backward(retain_graph=True)
-        E_optimizer.step()
-
 #Image Vectors
-        mask_1 = grad_cam_plus_plus(imgs1.detach().clone(),None) #[c,1,h,w]
-        mask_2 = grad_cam_plus_plus(imgs2.detach().clone(),None)
+        mask_1 = grad_cam_plus_plus(imgs1,None) #[c,1,h,w]
+        mask_2 = grad_cam_plus_plus(imgs2,None)
         # imgs1.retain_grad()
         # imgs2.retain_grad()
         imgs1_ = imgs1.detach().clone()
@@ -176,13 +164,16 @@ def train(tensor_writer = None, args = None):
         imgs2_.requires_grad = True
         grad_1 = gbp(imgs1_) # [n,c,h,w]
         grad_2 = gbp(imgs2_)
-        heatmap_1,cam_1 = mask2cam(mask_1.detach().clone(),imgs1.detach().clone())
-        heatmap_2,cam_2 = mask2cam(mask_2.detach().clone(),imgs2.detach().clone())
+        heatmap_1,cam_1 = mask2cam(mask_1,imgs1)
+        heatmap_2,cam_2 = mask2cam(mask_2,imgs2)
 
         loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips_model=loss_lpips)
 
     ##--Image
-        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
+        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
+        E_optimizer.zero_grad()
+        loss_imgs.backward(retain_graph=True)
+        E_optimizer.step()
 
     ##--Mask_Cam as AT1 (HeatMap from Mask)
         mask_1 = mask_1.float().to(device)
@@ -191,6 +182,11 @@ def train(tensor_writer = None, args = None):
         mask_2.requires_grad=True
         loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
 
+        loss_mask = loss_mask*0.1
+        E_optimizer.zero_grad()
+        loss_mask.backward(retain_graph=True)
+        E_optimizer.step()
+
     ##--Grad_CAM as AT2 (from mask with img)
         cam_1 = cam_1.float().to(device)
         cam_1.requires_grad=True
@@ -198,9 +194,21 @@ def train(tensor_writer = None, args = None):
         cam_2.requires_grad=True
         loss_Gcam, loss_Gcam_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
 
-        loss_msiv = loss_imgs + (loss_Gcam + loss_mask)*0.125
+        loss_Gcam = loss_Gcam*0.1
         E_optimizer.zero_grad()
-        loss_msiv.backward()
+        loss_Gcam.backward(retain_graph=True)
+        E_optimizer.step()
+
+#Latent Vectors
+    ##--C
+        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+
+    ##--W
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+
+        loss_mslv = (loss_c + loss_w)*0.01
+        E_optimizer.zero_grad()
+        loss_w.backward()
         E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
@@ -302,25 +310,25 @@ def train(tensor_writer = None, args = None):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='the training args')
-    parser.add_argument('--iterations', type=int, default=200000)
+    parser.add_argument('--iterations', type=int, default=210000)
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=5)
     parser.add_argument('--experiment_dir', default=None)
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/biggan/256/G-256.pt')
+    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/sttylegan_v2/stylegan2-cat256.pth')
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)#'./result/StyleGAN1-car512-Aligned-modelV2/models/E_model_iter100000.pth'
     parser.add_argument('--img_size',type=int, default=256)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
-    parser.add_argument('--z_dim', type=int, default=128) # BigGAN,z=128
-    parser.add_argument('--mtype', type=int, default=4) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN00
+    parser.add_argument('--z_dim', type=int, default=512) # BigGAN,z=128, PGGAN and StyleGANs = 512
+    parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN00
     parser.add_argument('--start_features', type=int, default=64) # 16->1024 32->512 64->256 
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/BigGAN-256-MisAligned-FronterIN"
+        resultPath = "./result/StyleGAN2-CAT256-MisAligned-solveDetach&Clone-FronterImageVecvtors"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

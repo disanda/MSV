@@ -69,26 +69,20 @@ def train(tensor_writer = None, args = None):
 
         E_optimizer.zero_grad()
 
-#Latent-Vectors
-
-## w
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
-
-## c
-        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
-
-        loss_mslv = (loss_w + loss_c)*0.01
-        E_optimizer.zero_grad()
-        loss_mslv.backward(retain_graph=True)
-        E_optimizer.step()
-
 #loss Images
         loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
+        E_optimizer.zero_grad()
+        loss_imgs.backward(retain_graph=True)
+        E_optimizer.step()
 
 #loss AT1
         imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8]
         imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8]
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
+        loss_medium = loss_medium*5
+        E_optimizer.zero_grad()
+        loss_medium.backward(retain_graph=True)
+        E_optimizer.step()
 
 #loss AT2
         imgs_small_1 = imgs1[:,:,\
@@ -100,11 +94,26 @@ def train(tensor_writer = None, args = None):
         imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32]
 
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
+        loss_small = loss_small*9
 
-        #loss_msiv = loss_imgs + (loss_medium + loss_small)*0.1  # Case 1
-        loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small # Case2, loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small
         E_optimizer.zero_grad()
-        loss_msiv.backward()
+        loss_small.backward(retain_graph=True)
+        E_optimizer.step()
+        # Case1, loss_msiv = loss_imgs + (loss_medium + loss_small)*0.1  # Case 1
+        # Case2, loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small
+
+
+#Latent-Vectors
+
+## w
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+
+## c
+        loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
+
+        loss_mslv = (loss_w + loss_c)*0.01
+        E_optimizer.zero_grad()
+        loss_mslv.backward()
         E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))

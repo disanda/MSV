@@ -19,8 +19,8 @@ w_path = './latentvectors/faces/i3_cxx2.pt'
 Gs = Generator(startf=16, maxf=512, layer_count=int(math.log(img_size,2)-1), latent_size=512, channels=3)
 Gs.load_state_dict(torch.load(GAN_path+'Gs_dict.pth', map_location=device))
 
-E = BE.BE()
-E.load_state_dict(torch.load('./checkpoint/E/styleganv1.pth',map_location=torch.device('cpu')))
+# E = BE.BE()
+# E.load_state_dict(torch.load('./checkpoint/E/styleganv1.pth',map_location=torch.device('cpu')))
 
 direction = np.load(direction_path) #[[1, 512] interfaceGAN
 direction = torch.tensor(direction).float()

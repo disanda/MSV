@@ -71,6 +71,14 @@ def train(tensor_writer = None, args = None):
 
         E_optimizer.zero_grad()
 
+#loss Images
+        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
+
+        loss_msiv = loss_imgs
+        E_optimizer.zero_grad()
+        loss_msiv.backward(retain_graph=True)
+        E_optimizer.step()
+
 #Latent-Vectors
 
 ## w
@@ -80,16 +88,9 @@ def train(tensor_writer = None, args = None):
 
         loss_mslv = loss_c*0.01
         E_optimizer.zero_grad()
-        loss_mslv.backward(retain_graph=True)
+        loss_mslv.backward()
         E_optimizer.step()
 
-#loss Images
-        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
-
-        loss_msiv = loss_imgs
-        E_optimizer.zero_grad()
-        loss_msiv.backward()
-        E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
         print('[loss_imgs_mse[img,img_mean,img_std], loss_imgs_kl, loss_imgs_cosine, loss_imgs_ssim, loss_imgs_lpips]')
