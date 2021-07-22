@@ -198,7 +198,7 @@ def train(tensor_writer = None, args = None):
 
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
 
-        loss_tsa = loss_imgs + (loss_medium + loss_small)*0.1 
+        loss_tsa = loss_imgs + loss_medium + loss_small
         E_optimizer.zero_grad()
         loss_tsa.backward(retain_graph=True)
         E_optimizer.step()
@@ -211,9 +211,9 @@ def train(tensor_writer = None, args = None):
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
 
-        loss_mslv = (loss_w + loss_c)*0.01
+        loss_mtv = (loss_w + loss_c)*0.01
         E_optimizer.zero_grad()
-        loss_mslv.backward()
+        loss_mtv.backward()
         E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
@@ -301,22 +301,22 @@ if __name__ == "__main__":
     parser.add_argument('--iterations', type=int, default=210000) # epoch = iterations//30000
     parser.add_argument('--lr', type=float, default=0.0015)
     parser.add_argument('--beta_1', type=float, default=0.0)
-    parser.add_argument('--batch_size', type=int, default=5)
+    parser.add_argument('--batch_size', type=int, default=2)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v2/stylegan2_cat256.pth') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
+    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)
-    parser.add_argument('--img_size',type=int, default=256)
+    parser.add_argument('--img_size',type=int, default=1024)
     parser.add_argument('--img_channels', type=int, default=3)# RGB:3 ,L:1
     parser.add_argument('--z_dim', type=int, default=512) # PGGAN , StyleGANs are 512. BIGGAN is 128
     parser.add_argument('--mtype', type=int, default=2) # StyleGANv1=1, StyleGANv2=2, PGGAN=3, BigGAN=4
-    parser.add_argument('--start_features', type=int, default=64)  # 16->1024 32->512 64->256
+    parser.add_argument('--start_features', type=int, default=16)  # 16->1024 32->512 64->256
     args = parser.parse_args()
 
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-CAT256-Aligned-solveDetach&Clone-FronterImageVecvtors"
+        resultPath = "./result/StyleGAN2-FFHQ1024-Aligned-ImgAT1AT2(1:1:1)"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

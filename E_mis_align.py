@@ -170,33 +170,25 @@ def train(tensor_writer = None, args = None):
         loss_grad, loss_grad_info = space_loss(grad_1,grad_2,lpips_model=loss_lpips)
 
     ##--Image
-        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
-        E_optimizer.zero_grad()
-        loss_imgs.backward(retain_graph=True)
-        E_optimizer.step()
+        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
 
     ##--Mask_Cam as AT1 (HeatMap from Mask)
         mask_1 = mask_1.float().to(device)
         mask_1.requires_grad=True
         mask_2 = mask_2.float().to(device)
         mask_2.requires_grad=True
-        loss_mask, loss_mask_info = space_loss(mask_1,mask_2,lpips_model=loss_lpips)
-
-        loss_mask = loss_mask*0.1
-        E_optimizer.zero_grad()
-        loss_mask.backward(retain_graph=True)
-        E_optimizer.step()
+        loss_mask, loss_mask_info = space_loss(mask_1.detach().clone(),mask_2.detach().clone(),lpips_model=loss_lpips)
 
     ##--Grad_CAM as AT2 (from mask with img)
         cam_1 = cam_1.float().to(device)
         cam_1.requires_grad=True
         cam_2 = cam_2.float().to(device)
         cam_2.requires_grad=True
-        loss_Gcam, loss_Gcam_info = space_loss(cam_1,cam_2,lpips_model=loss_lpips)
+        loss_Gcam, loss_Gcam_info = space_loss(cam_1.detach().clone(),cam_2.detach().clone(),lpips_model=loss_lpips)
 
-        loss_Gcam = loss_Gcam*0.1
+        loss_tsa = loss_imgs + loss_mask + loss_Gcam
         E_optimizer.zero_grad()
-        loss_Gcam.backward(retain_graph=True)
+        loss_tsa.backward(retain_graph=True)
         E_optimizer.step()
 
 #Latent Vectors
@@ -206,9 +198,9 @@ def train(tensor_writer = None, args = None):
     ##--W
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
 
-        loss_mslv = (loss_c + loss_w)*0.01
+        loss_mtv = (loss_c + loss_w)*0.01
         E_optimizer.zero_grad()
-        loss_w.backward()
+        loss_mtv.backward()
         E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
