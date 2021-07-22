@@ -175,39 +175,32 @@ def train(tensor_writer = None, args = None):
 # imgs_torch.shape[3]//8+imgs_torch.shape[3]//32:-imgs_torch.shape[3]//8-imgs_torch.shape[3]//32
 # ]
 
-# Case 1: loss_msiv = loss_imgs + (loss_medium + loss_small)*0.1 
-# Case 2: loss_msiv = loss_imgs + 5*loss_medium + 9*loss_small
+# Case 1 (default): loss_tsa = loss_imgs + (loss_medium + loss_small)*0.1 
+# Case 2: loss_tsa = loss_imgs + 5*loss_medium + 9*loss_small. 
+# If using Case 2, chaning Encoder to E_Blur and remoing below loss-vectors' detach()&clone(), also upgrading different vectors separately (see ablation study)
 
 #loss Images
-        loss_imgs, loss_imgs_info = space_loss(imgs1,imgs2,lpips_model=loss_lpips)
-        E_optimizer.zero_grad()
-        loss_imgs.backward(retain_graph=True)
-        E_optimizer.step()
+        loss_imgs, loss_imgs_info = space_loss(imgs1.detach().clone(),imgs2.detach().clone(),lpips_model=loss_lpips)
 
 #loss AT1
-        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8]
-        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8]
+        imgs_medium_1 = imgs1[:,:,:,imgs1.shape[3]//8:-imgs1.shape[3]//8].detach().clone()
+        imgs_medium_2 = imgs2[:,:,:,imgs2.shape[3]//8:-imgs2.shape[3]//8].detach().clone()
         loss_medium, loss_medium_info = space_loss(imgs_medium_1,imgs_medium_2,lpips_model=loss_lpips)
-
-        loss_medium = loss_medium*0.1
-        E_optimizer.zero_grad()
-        loss_medium.backward(retain_graph=True)
-        E_optimizer.step()
 
 #loss AT2
         imgs_small_1 = imgs1[:,:,\
         imgs1.shape[2]//8+imgs1.shape[2]//32:-imgs1.shape[2]//8-imgs1.shape[2]//32,\
-        imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32]
+        imgs1.shape[3]//8+imgs1.shape[3]//32:-imgs1.shape[3]//8-imgs1.shape[3]//32].detach().clone()
 
         imgs_small_2 = imgs2[:,:,\
         imgs2.shape[2]//8+imgs2.shape[2]//32:-imgs2.shape[2]//8-imgs2.shape[2]//32,\
-        imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32]
+        imgs2.shape[3]//8+imgs2.shape[3]//32:-imgs2.shape[3]//8-imgs2.shape[3]//32].detach().clone()
 
         loss_small, loss_small_info = space_loss(imgs_small_1,imgs_small_2,lpips_model=loss_lpips)
 
-        loss_small = loss_small*0.1
+        loss_tsa = loss_imgs + (loss_medium + loss_small)*0.1 
         E_optimizer.zero_grad()
-        loss_small.backward(retain_graph=True)
+        loss_tsa.backward(retain_graph=True)
         E_optimizer.step()
 
 #Latent-Vectors
