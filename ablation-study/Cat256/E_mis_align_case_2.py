@@ -209,9 +209,8 @@ def train(tensor_writer = None, args = None):
     ##--W
         loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
 
-        loss_mtv = (loss_c + loss_w)*0.01
         E_optimizer.zero_grad()
-        loss_mtv.backward()
+        loss_w.backward()
         E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
@@ -318,7 +317,7 @@ if __name__ == "__main__":
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--experiment_dir', default=None)
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v2/stylegan2_cat256.pth')
+    parser.add_argument('--checkpoint_dir_GAN', default='../checkpoint/stylegan_v2/stylegan2_cat256.pth')
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)#'./result/StyleGAN2-CAT256-MisAligned-solveDetach&Clone-FronterImageVecvtors/models/E_model_ep0_iter20000.pth'
     parser.add_argument('--img_size',type=int, default=256)
@@ -331,7 +330,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-Cat256-Case2-MisAligned"
+        resultPath = "./result/StyleGAN2-Cat256-Case2-MisAligned-w"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

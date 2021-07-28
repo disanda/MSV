@@ -216,15 +216,15 @@ def train(tensor_writer = None, args = None):
 
 #Latent-Vectors
 
-## w
-        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
 
 ## c
         loss_c, loss_c_info = space_loss(const1,const2,image_space = False)
 
-        loss_mtv = (loss_w + loss_c)*0.01
+## w
+        loss_w, loss_w_info = space_loss(w1,w2,image_space = False)
+
         E_optimizer.zero_grad()
-        loss_mtv.backward()
+        loss_w.backward()
         E_optimizer.step()
 
         print('ep_%d_iter_%d'%(iteration//30000,iteration%30000))
@@ -314,7 +314,7 @@ if __name__ == "__main__":
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--experiment_dir', default=None) #None
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v2/stylegan2_cat256.pth') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
+    parser.add_argument('--checkpoint_dir_GAN', default='../checkpoint/stylegan_v2/stylegan2_cat256.pth') #None  ./checkpoint/stylegan_v1/ffhq1024/ or ./checkpoint/stylegan_v2/stylegan2_ffhq1024.pth or ./checkpoint/biggan/256/G-256.pt
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)
     parser.add_argument('--img_size',type=int, default=256)
@@ -327,7 +327,7 @@ if __name__ == "__main__":
     if not os.path.exists('./result'): os.mkdir('./result')
     resultPath = args.experiment_dir
     if resultPath == None:
-        resultPath = "./result/StyleGAN2-Cat256-Case1-Aligned"
+        resultPath = "./result/StyleGAN2-Cat256-Case1-Aligned-w"
         if not os.path.exists(resultPath): os.mkdir(resultPath)
 
     resultPath1_1 = resultPath+"/imgs"

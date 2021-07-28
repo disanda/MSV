@@ -309,7 +309,7 @@ if __name__ == "__main__":
     parser.add_argument('--beta_1', type=float, default=0.0)
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--experiment_dir', default=None)
-    parser.add_argument('--checkpoint_dir_GAN', default='./checkpoint/stylegan_v2/stylegan2_cat256.pth')
+    parser.add_argument('--checkpoint_dir_GAN', default='../checkpoint/stylegan_v2/stylegan2_cat256.pth')
     parser.add_argument('--config_dir', default='./checkpoint/biggan/256/biggan-deep-256-config.json') # BigGAN needs it
     parser.add_argument('--checkpoint_dir_E', default=None)#'./result/StyleGAN2-CAT256-MisAligned-solveDetach&Clone-FronterImageVecvtors/models/E_model_ep0_iter20000.pth'
     parser.add_argument('--img_size',type=int, default=256)
